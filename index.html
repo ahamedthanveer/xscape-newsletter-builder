@@ -145,7 +145,8 @@
     </label>
     <button class="btn btn-secondary" id="undoBtn" onclick="undoLast()" disabled>Undo</button>
     <button class="btn btn-secondary" onclick="resetTool()">Reset</button>
-    <button class="btn btn-primary" onclick="exportEmailHTML()">Download for Email</button>
+    <button class="btn btn-secondary" onclick="exportEmailHTML()">Download for Email</button>
+    <button class="btn btn-primary" id="copyEmailBtn" onclick="copyForEmail(this)">Copy for Gmail</button>
   </div>
 </div>
 
@@ -756,13 +757,19 @@
     URL.revokeObjectURL(url);
   }
 
-  function exportEmailHTML(){
+  // ensure the live newsletter reflects the selected font before we clone it,
+  // and return the chosen font name so callers can add the matching web-font link
+  function prepareContainerFont(){
     const currentFont = document.getElementById('fontSelect').value;
-    // ensure the live newsletter reflects the selected font before we clone it
     const stack = fontStack(currentFont);
     document.querySelectorAll('#container [style*="font-family"]').forEach(el=>{
       el.style.fontFamily = stack;
     });
+    return currentFont;
+  }
+
+  function exportEmailHTML(){
+    const currentFont = prepareContainerFont();
     const node = cleanExportNode();
     const fontLinkParam = GOOGLE_FONT_LINKS[currentFont];
     const fontLinkTag = fontLinkParam
@@ -788,6 +795,68 @@ ${node.outerHTML}
 </body>
 </html>`;
     downloadFile('xscape-newsletter-email.html', html, 'text/html');
+  }
+
+  // ---------- one-click copy straight into Gmail ----------
+  // Copies ONLY the single cleaned newsletter table (centered) as rich HTML.
+  // Deliberately avoids the full <html>/<body> document + MSO conditional
+  // comments that the "download file → open → Select-All → copy" flow produces,
+  // because pasting a whole standalone document into Gmail makes Gmail's
+  // sanitizer render the block twice. A minimal centered fragment pastes exactly
+  // once, correctly aligned.
+  async function copyForEmail(btn){
+    prepareContainerFont();
+    const node = cleanExportNode();
+    const clipHTML =
+      '<div align="center" style="background-color:#EDEDED; padding:20px 10px;">' +
+      node.outerHTML +
+      '</div>';
+    const plain = (node.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    try {
+      await copyHtmlToClipboard(clipHTML, plain);
+      flashButton(btn, 'Copied ✓ paste in Gmail');
+    } catch(err){
+      console.error(err);
+      alert('Copy failed in this browser. Please use "Download for Email" instead, or try a recent version of Chrome/Edge.');
+    }
+  }
+
+  // Write rich HTML to the clipboard, preferring the async Clipboard API and
+  // falling back to a Range + execCommand('copy') for older browsers.
+  async function copyHtmlToClipboard(html, plain){
+    if(navigator.clipboard && window.ClipboardItem){
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([plain || ''], {type:'text/plain'})
+      });
+      await navigator.clipboard.write([item]);
+      return;
+    }
+    // Fallback: put the HTML into an off-screen editable node, select it, copy.
+    const holder = document.createElement('div');
+    holder.setAttribute('contenteditable', 'true');
+    holder.style.cssText = 'position:fixed; left:-99999px; top:0; opacity:0;';
+    holder.innerHTML = html;
+    document.body.appendChild(holder);
+    const range = document.createRange();
+    range.selectNodeContents(holder);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    document.body.removeChild(holder);
+    if(!ok) throw new Error('execCommand copy rejected');
+  }
+
+  // Briefly swap a button's label to confirm an action, then restore it.
+  function flashButton(btn, msg){
+    if(!btn) return;
+    if(btn.dataset.flashing) return;
+    btn.dataset.flashing = '1';
+    const original = btn.textContent;
+    btn.textContent = msg;
+    setTimeout(()=>{ btn.textContent = original; delete btn.dataset.flashing; }, 2200);
   }
 
   // ---------- load a previously saved/exported file back in ----------
