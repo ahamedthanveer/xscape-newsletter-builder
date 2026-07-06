@@ -768,9 +768,43 @@
     return currentFont;
   }
 
-  function exportEmailHTML(){
+  // Gmail's paste pipeline special-cases inline SVG data-URIs (an SVG can carry
+  // scripts, so Gmail re-sanitizes/re-renders it) and ends up DUPLICATING the
+  // whole pasted block — this is why the newsletter pasted twice: the logo is a
+  // data:image/svg+xml image sitting in both the header and footer. Raster
+  // images never trigger it. So before exporting we convert every SVG data-URI
+  // image to a PNG data-URI (rendered at 2x for crispness). Fully self-contained
+  // (nothing is uploaded anywhere) and it makes the newsletter paste exactly once.
+  function rasterizeSvgImages(node){
+    const svgImgs = Array.from(node.querySelectorAll('img'))
+      .filter(im => (im.getAttribute('src') || '').startsWith('data:image/svg+xml'));
+    return Promise.all(svgImgs.map(im => new Promise(resolve => {
+      const src = im.getAttribute('src');
+      const image = new Image();
+      image.onload = function(){
+        const w = parseInt(im.getAttribute('width')) || image.naturalWidth || 150;
+        const ratio = (image.naturalWidth && image.naturalHeight)
+          ? image.naturalHeight / image.naturalWidth : 0.26;
+        const h = parseInt(im.getAttribute('height')) || Math.max(1, Math.round(w * ratio));
+        const scale = 2; // render at 2x so the rasterized logo stays crisp on retina displays
+        const canvas = document.createElement('canvas');
+        canvas.width = w * scale; canvas.height = h * scale;
+        try {
+          canvas.getContext('2d').drawImage(image, 0, 0, w * scale, h * scale);
+          im.setAttribute('src', canvas.toDataURL('image/png'));
+          if(!im.getAttribute('height')) im.setAttribute('height', h);
+        } catch(e){ /* canvas tainted — leave the original SVG rather than break the image */ }
+        resolve();
+      };
+      image.onerror = function(){ resolve(); };
+      image.src = src;
+    })));
+  }
+
+  async function exportEmailHTML(){
     const currentFont = prepareContainerFont();
     const node = cleanExportNode();
+    await rasterizeSvgImages(node);
     const fontLinkParam = GOOGLE_FONT_LINKS[currentFont];
     const fontLinkTag = fontLinkParam
       ? `<link href="https://fonts.googleapis.com/css2?${fontLinkParam}&display=swap" rel="stylesheet">`
@@ -798,15 +832,13 @@ ${node.outerHTML}
   }
 
   // ---------- one-click copy straight into Gmail ----------
-  // Copies ONLY the single cleaned newsletter table (centered) as rich HTML.
-  // Deliberately avoids the full <html>/<body> document + MSO conditional
-  // comments that the "download file → open → Select-All → copy" flow produces,
-  // because pasting a whole standalone document into Gmail makes Gmail's
-  // sanitizer render the block twice. A minimal centered fragment pastes exactly
-  // once, correctly aligned.
+  // Copies ONLY the single cleaned newsletter table (centered) as rich HTML,
+  // with SVG data-URI images rasterized to PNG first (see rasterizeSvgImages) so
+  // Gmail pastes it exactly once instead of duplicating the whole newsletter.
   async function copyForEmail(btn){
     prepareContainerFont();
     const node = cleanExportNode();
+    await rasterizeSvgImages(node);
     const clipHTML =
       '<div align="center" style="background-color:#EDEDED; padding:20px 10px;">' +
       node.outerHTML +
