@@ -10,7 +10,7 @@
     --black:#0A0A0A;
     --white:#FFFFFF;
     --page-bg:#F7F7F7;
-    --heading:#242526;
+    --heading:#0A0A0A;
     --body-text:#58585F;
     --footer-text:#6E6E6E;
     --cta:#01A571;
@@ -87,8 +87,14 @@
     resize:both; overflow:hidden; border:1px dashed #B9C2D6; border-radius:4px;
     max-width:100%;
   }
-  .nl-float-img{ max-width:100%; }
-  .nl-float-img .imgwrap.resizable{ max-width:100%; box-sizing:border-box; }
+  /* two-column section layout (Gmail-safe — replaces CSS float, which Gmail
+     mis-aligns on both mobile and desktop). The image sits in nl-img-cell and
+     the copy in nl-text-cell so the two columns stay locked side by side. */
+  .nl-img-cell{ vertical-align:top; }
+  /* keep copy locked inside the newsletter when the image column is widened —
+     long words wrap instead of pushing the text out past the 600px edge */
+  .nl-text-cell{ vertical-align:top; overflow-wrap:anywhere; word-break:break-word; }
+  .nl-img-cell .imgwrap.resizable{ max-width:100%; box-sizing:border-box; }
   .imgwrap.resizable img{ width:100%; height:100%; object-fit:cover; border-radius:4px; }
   .imgwrap.resizable::after{
     content:"⤡"; position:absolute; right:2px; bottom:0px; font-size:11px;
@@ -158,7 +164,7 @@
 
   <!-- HEADER: logo + date -->
   <tr>
-    <td style="background-color:#0A0A0A; padding:20px 32px 6px 32px;">
+    <td style="background-color:#0A0A0A; padding:20px 0 6px 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td align="left" valign="middle">
@@ -176,14 +182,14 @@
     </td>
   </tr>
   <tr>
-    <td style="background-color:#0A0A0A; padding:0 32px 4px 32px; font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:12px; color:#8A8A8A;">
+    <td style="background-color:#0A0A0A; padding:0 0 4px 0; font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:12px; color:#8A8A8A;">
       <span data-editable contenteditable="true" data-pristine="1">Issue No: 01</span>
     </td>
   </tr>
 
   <!-- HERO TITLE -->
   <tr>
-    <td style="background-color:#0A0A0A; padding:18px 32px 34px 32px;" align="center">
+    <td style="background-color:#0A0A0A; padding:18px 0 34px 0;" align="center">
       <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:34px; font-weight:500; text-align:center; line-height:1.2; letter-spacing:-0.04em;">
         <span style="color:#FFFFFF;">Xscaping</span> <span style="color:#42FAC0;">Updates</span>
       </div>
@@ -192,7 +198,7 @@
 
   <!-- SUMMARY PARAGRAPH -->
   <tr>
-    <td style="padding:26px 32px 6px 32px;">
+    <td style="padding:26px 0 6px 0;">
       <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:13.5px; line-height:22px; color:#58585F;">
         [Write a short summary of what's inside this issue — this appears right under the title, before the sections begin.]
       </div>
@@ -201,9 +207,9 @@
 
   <!-- HERO IMAGE -->
   <tr>
-    <td style="padding:18px 32px 6px 32px;">
-      <span class="imgwrap resizable" style="width:536px; height:260px; max-width:536px; max-height:500px;">
-        <img data-role="img" src="https://placehold.co/536x260/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
+    <td style="padding:18px 0 6px 0;">
+      <span class="imgwrap resizable" style="width:600px; height:260px; max-width:600px; max-height:500px;">
+        <img data-role="img" src="https://placehold.co/600x260/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
         <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
         <input type="file" accept="image/*" onchange="handleImageUpload(event)">
         <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
@@ -214,103 +220,103 @@
   <!-- ===================== REUSABLE SECTION PATTERN (image left, text right) ===================== -->
   <!-- CEO CORNER -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">CEO CORNER</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">CEO CORNER</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
               Dear Team,<br><br>
               [A short note from the CEO — reflections, priorities, or a thank-you to the team.]<br><br>
               <strong>— [Name]</strong><br>
               <em>[Title]</em>
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
 
   <!-- ENGINEERING -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">ENGINEERING</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">ENGINEERING</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
               [Summary of engineering progress — builds, releases, key milestones.]<br>
               &bull; [Update item one]<br>
               &bull; [Update item two]<br>
               &bull; [Update item three]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
 
   <!-- R&D -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">R&amp;D</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">R&amp;D</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
               [Research milestones, experiment results, or new platform capabilities.]<br>
               &bull; [Update item one]<br>
               &bull; [Update item two]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
 
   <!-- MEDIA COVERAGE -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">MEDIA COVERAGE</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">MEDIA COVERAGE</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#242526;">[Publication Name — Article Title]</strong><br>
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+              <strong style="color:#0A0A0A;">[Publication Name — Article Title]</strong><br>
               [One or two sentence summary of the coverage.]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read Article &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read Article &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
 
   <!-- PAST EVENTS -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">PAST EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">PAST EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#242526;">[Event Name — Location]</strong><br>
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+              <strong style="color:#0A0A0A;">[Event Name — Location]</strong><br>
               [One or two sentence recap of the event.]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
 
   <!-- UPCOMING EVENTS (2 cards: image + title + date + location, no CTA, matches reference) -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 0 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">UPCOMING EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+    <td style="padding:24px 0 0 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">UPCOMING EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;">
         <tr>
           <td width="48%" valign="top">
@@ -320,7 +326,7 @@
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
             </span>
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#242526; padding-top:10px;">
+            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#0A0A0A; padding-top:10px;">
               <strong>[Event 1]</strong><br>
               &#128197; [Dates]<br>
               &#128205; [City, ST]
@@ -335,7 +341,7 @@
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
             </span>
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#242526; padding-top:10px;">
+            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#0A0A0A; padding-top:10px;">
               <strong>[Event 2]</strong><br>
               &#128197; [Dates]<br>
               &#128205; [City, ST]
@@ -349,48 +355,48 @@
 
   <!-- BLOGS (one shared image left, 3 stacked entries right) -->
   <tr class="nl-section-row">
-    <td style="padding:24px 32px 24px 32px;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#242526; letter-spacing:-0.02em; display:inline-block;">BLOGS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <div class="nl-section-body" style="margin-top:14px; overflow:hidden;"><div class="nl-float-img" style="float:left; margin:0 20px 10px 0;"><span class="imgwrap resizable" style="width:160px; height:400px; max-width:160px; max-height:600px;">
+    <td style="padding:24px 0 24px 0;">
+      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">BLOGS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:400px; max-width:100%; max-height:600px; min-width:80px;">
               <img data-role="img" src="https://placehold.co/160x400/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
               <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)">
               <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></div><div class="nl-float-text"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#242526;">[Blog Post Title]</strong><br>
+            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
+              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
               [One-line teaser of the post.]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
             <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div>
 
             <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F; padding-top:16px;">
-              <strong style="color:#242526;">[Blog Post Title]</strong><br>
+              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
               [One-line teaser of the post.]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
             <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div>
 
             <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F; padding-top:16px;">
-              <strong style="color:#242526;">[Blog Post Title]</strong><br>
+              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
               [One-line teaser of the post.]
             </div>
             <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></div></div>
+            <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
     </td>
   </tr>
   <!-- =================== END REUSABLE SECTION PATTERN =================== -->
 
   <!-- FOOTER — upper band (light, address + social) -->
   <tr>
-    <td style="padding:22px 32px; border-top:1px solid #E4E4E4;">
+    <td style="padding:22px 0; border-top:1px solid #E4E4E4;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td valign="middle" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:12px; color:#242526; line-height:18px;">
+          <td valign="middle" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:12px; color:#0A0A0A; line-height:18px;">
             <span data-editable contenteditable="true" data-pristine="1">Fort Lee, NJ<br>Santa Clara, CA</span>
           </td>
           <td valign="middle" align="right">
             <a href="https://www.linkedin.com/company/xscape-photonics-inc/" style="display:inline-block; margin-left:10px;" title="LinkedIn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.86 0-2.14 1.45-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z" fill="#242526"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.86 0-2.14 1.45-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z" fill="#0A0A0A"/></svg>
             </a>
           </td>
         </tr>
@@ -400,7 +406,7 @@
 
   <!-- FOOTER — lower band (black, logo + confidential) -->
   <tr>
-    <td style="background-color:#0A0A0A; padding:18px 32px;">
+    <td style="background-color:#0A0A0A; padding:18px 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td align="left" valign="middle">
@@ -600,8 +606,11 @@
   function removeCollapsing(el){
     const parent = el.parentElement;
     el.remove();
-    // if that was the only thing in its wrapper div, remove the now-empty div too so no gap is left behind
-    if(parent && parent.tagName === 'DIV' && parent.children.length === 0 && !parent.textContent.trim()){
+    // if that was the only thing left in its wrapper, remove the now-empty
+    // container too so no gap (empty div) or dangling image cell (empty td) is
+    // left behind — dropping the img td lets the text cell take the full width.
+    if(parent && (parent.tagName === 'DIV' || parent.tagName === 'TD')
+        && parent.children.length === 0 && !parent.textContent.trim()){
       parent.remove();
     }
   }
@@ -694,8 +703,8 @@
     clone.querySelectorAll('.imgwrap.resizable').forEach(wrap=>{
       let w = parseInt(wrap.dataset.measuredW || wrap.offsetWidth || 300);
       let h = parseInt(wrap.dataset.measuredH || wrap.offsetHeight || 180);
-      // clamp to the usable section content width (600 template - 64px padding = 536)
-      const MAX_CONTENT_W = 536;
+      // clamp to the usable section content width (full 600 template — no side padding)
+      const MAX_CONTENT_W = 600;
       if(w > MAX_CONTENT_W){ h = Math.round(h * (MAX_CONTENT_W / w)); w = MAX_CONTENT_W; }
       const img = wrap.querySelector('img');
       if(img){
@@ -707,13 +716,14 @@
         img.style.objectFit = 'cover';
         img.style.borderRadius = '4px';
       }
-      // size the wrapper span so a floated image reserves the right footprint
+      // size the wrapper span so the image reserves the right footprint
       wrap.style.width = w + 'px';
       wrap.style.height = h + 'px';
       wrap.style.maxWidth = '100%';
-      // size the float container so text wraps correctly beside it
-      const floatBox = wrap.closest('.nl-float-img');
-      if(floatBox){ floatBox.style.width = w + 'px'; floatBox.style.maxWidth = '100%'; }
+      // pin the image column (td.nl-img-cell) to the measured image width so the
+      // two-column table locks the image and text side by side in Gmail
+      const imgCell = wrap.closest('.nl-img-cell');
+      if(imgCell){ imgCell.setAttribute('width', w); imgCell.style.width = w + 'px'; }
     });
 
     clone.querySelectorAll('[data-editable]').forEach(el => { el.removeAttribute('contenteditable'); el.removeAttribute('data-pristine'); });
@@ -935,8 +945,10 @@ ${node.outerHTML}
         const hPx = parseInt(h) || 160;
         wrap.style.width = wPx + 'px';
         wrap.style.height = hPx + 'px';
-        wrap.style.maxWidth = wPx + 'px';
+        wrap.style.maxWidth = '100%';
         wrap.style.maxHeight = (hPx * 2) + 'px';
+        wrap.style.minWidth = '80px';
+        img.style.maxWidth = '100%';
       }
       img.parentNode.insertBefore(wrap, img);
       wrap.appendChild(img);
