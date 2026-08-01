@@ -1078,9 +1078,12 @@ ${fontLinkTag}
 <!-- Note: Outlook desktop ignores web fonts and always falls back to Arial. Gmail and Apple Mail generally honor it. -->
 <!--[if mso]><style type="text/css">table {border-collapse:collapse;}</style><![endif]-->
 </head>
-<body style="margin:0; padding:0; background-color:#EDEDED;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EDEDED;">
-<tr><td align="center" style="padding:20px 10px;">
+<body style="margin:0; padding:0;">
+<!-- No page background or padding around the newsletter on purpose: opening this
+     file and doing Ctrl+A / Ctrl+C picks up the wrapper too, and a tinted wrapper
+     pastes into Gmail as a grey border around the newsletter. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding:0;">
 ${node.outerHTML}
 </td></tr>
 </table>
@@ -1097,8 +1100,10 @@ ${node.outerHTML}
     prepareContainerFont();
     const node = cleanExportNode();
     await rasterizeSvgImages(node);
+    // Wrapper carries no background or padding: a tinted one pastes into Gmail
+    // as a grey border around the newsletter.
     const clipHTML =
-      '<div align="center" style="background-color:#EDEDED; padding:20px 10px;">' +
+      '<div align="center">' +
       node.outerHTML +
       '</div>';
     const plain = (node.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
