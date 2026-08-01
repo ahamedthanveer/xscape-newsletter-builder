@@ -58,7 +58,49 @@
     background:#1D1D1D; color:#fff; width:120px;
   }
 
-  .canvas-wrap{padding:24px 10px 20px; display:flex; justify-content:center;}
+  .canvas-wrap{padding:24px 10px 8px; display:flex; flex-direction:column; align-items:center;}
+
+  /* ---- block editing affordances (editor only — none of this is exported) ---- */
+  .nl-block > td{ position:relative; }
+  .nl-block:hover > td{ outline:1px dashed #B9C2D6; outline-offset:-1px; }
+  .blk-tools{
+    position:absolute; top:3px; right:4px; z-index:6;
+    display:none; align-items:center; gap:3px;
+  }
+  .nl-block:hover .blk-tools{ display:flex; }
+  .blk-tools button, .blk-tools .blk-drag{
+    font-family:'DM Sans', Arial, sans-serif; font-size:11px; line-height:1;
+    width:20px; height:20px; padding:0; border-radius:5px; cursor:pointer;
+    border:1px solid #C9C9C9; background:#FFF; color:#444;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .blk-tools .blk-drag{ cursor:grab; }
+  .blk-tools .blk-del:hover{ background:#D33; border-color:#D33; color:#fff; }
+  .blk-tools .blk-h{
+    font-family:'DM Sans', Arial, sans-serif; font-size:10px; height:20px;
+    border:1px solid #C9C9C9; border-radius:5px; background:#fff; color:#444; cursor:pointer;
+  }
+  .nl-block.dragging{ opacity:.4; }
+  .nl-block.drop-target > td{ outline:2px solid #2F7DE1; outline-offset:-2px; }
+
+  /* ---- add bar ---- */
+  .add-bar{ width:600px; max-width:100%; padding:14px 0 24px; text-align:center; }
+  .empty-hint{
+    font-family:'DM Sans', Arial, sans-serif; font-size:12.5px; color:#8A8A8A;
+    margin:0 0 12px; font-style:italic;
+  }
+  .empty-hint.hidden{ display:none; }
+  .add-bar-btns{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .add-btn{
+    font-family:'DM Sans', Arial, sans-serif; font-size:12px; font-weight:700;
+    padding:8px 14px; border-radius:8px; cursor:pointer;
+    border:1px dashed #2F7DE1; background:#EFF5FF; color:#2F7DE1;
+  }
+  .add-btn:hover{ background:#E1EDFF; }
+  .add-bar-tip{
+    font-family:'DM Sans', Arial, sans-serif; font-size:11px; color:#9A9A9A; margin:12px 0 0;
+  }
+  .tipdot{ color:#666; }
 
   /* editable affordances */
   [data-editable]{ outline-offset:2px; border-radius:2px; }
@@ -185,195 +227,19 @@
     </td>
   </tr>
 
-  <!-- SUMMARY PARAGRAPH -->
+  <!-- CONTENT CANVAS — deliberately empty. Everything between the banner and
+       the footer is built by the user from blocks (see addBlock()). Each block
+       is a plain <tr>, so the exported newsletter is nothing but nested tables
+       with inline styles: no floats, no absolute positioning, no stylesheet to
+       depend on. That is what keeps it aligned identically on phone and laptop. -->
   <tr>
-    <td style="padding:26px 0 6px 0;">
-      <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:13.5px; line-height:22px; color:#58585F;">
-        [Write a short summary of what's inside this issue — this appears right under the title, before the sections begin.]
-      </div>
-    </td>
-  </tr>
-
-  <!-- HERO IMAGE -->
-  <tr>
-    <td style="padding:18px 0 6px 0;">
-      <span class="imgwrap resizable" style="width:600px; height:260px; max-width:600px; max-height:500px;">
-        <img data-role="img" src="https://placehold.co/600x260/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-        <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-        <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-        <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-      </span>
-    </td>
-  </tr>
-
-  <!-- ===================== REUSABLE SECTION PATTERN (image left, text right) ===================== -->
-  <!-- CEO CORNER -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">CEO CORNER</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              Dear Team,<br><br>
-              [A short note from the CEO — reflections, priorities, or a thank-you to the team.]<br><br>
-              <strong>— [Name]</strong><br>
-              <em>[Title]</em>
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-
-  <!-- ENGINEERING -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">ENGINEERING</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              [Summary of engineering progress — builds, releases, key milestones.]<br>
-              &bull; [Update item one]<br>
-              &bull; [Update item two]<br>
-              &bull; [Update item three]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-
-  <!-- R&D -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">R&amp;D</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              [Research milestones, experiment results, or new platform capabilities.]<br>
-              &bull; [Update item one]<br>
-              &bull; [Update item two]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-
-  <!-- MEDIA COVERAGE -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">MEDIA COVERAGE</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#0A0A0A;">[Publication Name — Article Title]</strong><br>
-              [One or two sentence summary of the coverage.]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read Article &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-
-  <!-- PAST EVENTS -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">PAST EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:160px; max-width:100%; max-height:500px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#0A0A0A;">[Event Name — Location]</strong><br>
-              [One or two sentence recap of the event.]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:8px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-
-  <!-- UPCOMING EVENTS (2 cards: image + title + date + location, no CTA, matches reference) -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 0 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">UPCOMING EVENTS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;">
-        <tr>
-          <td width="48%" valign="top">
-            <span class="imgwrap resizable" style="width:100%; max-width:260px; height:150px; max-height:300px;">
-              <img data-role="img" src="https://placehold.co/260x150/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span>
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#0A0A0A; padding-top:10px;">
-              <strong>[Event 1]</strong><br>
-              &#128197; [Dates]<br>
-              &#128205; [City, ST]
-            </div>
-            <div><button class="add-img-btn" type="button" style="font-size:9.5px; padding:3px 6px;" onclick="insertImageSlot(this)">+ Image</button></div>
-          </td>
-          <td width="4%">&nbsp;</td>
-          <td width="48%" valign="top">
-            <span class="imgwrap resizable" style="width:100%; max-width:260px; height:150px; max-height:300px;">
-              <img data-role="img" src="https://placehold.co/260x150/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span>
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#0A0A0A; padding-top:10px;">
-              <strong>[Event 2]</strong><br>
-              &#128197; [Dates]<br>
-              &#128205; [City, ST]
-            </div>
-            <div><button class="add-img-btn" type="button" style="font-size:9.5px; padding:3px 6px;" onclick="insertImageSlot(this)">+ Image</button></div>
-          </td>
-        </tr>
+    <td style="padding:0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" id="blocks" style="width:100%;">
+        <tbody id="blocksBody"></tbody>
       </table>
     </td>
   </tr>
 
-  <!-- BLOGS (one shared image left, 3 stacked entries right) -->
-  <tr class="nl-section-row">
-    <td style="padding:24px 0 24px 0;">
-      <div style="display:inline-block;"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:20px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; display:inline-block;">BLOGS</div><div class="nl-underline" style="height:3px; width:120%; margin:4px 0 0; background:linear-gradient(90deg, #6DE15D 0%, #24CB83 27%, #4198E9 50%, rgba(131,112,222,0) 75%);"></div></div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="nl-section-body" style="margin-top:14px;"><tr><td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;"><span class="imgwrap resizable" style="width:160px; height:400px; max-width:100%; max-height:600px; min-width:80px;">
-              <img data-role="img" src="https://placehold.co/160x400/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-              <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-              <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-            </span></td><td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F;">
-              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
-              [One-line teaser of the post.]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div>
-
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F; padding-top:16px;">
-              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
-              [One-line teaser of the post.]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div>
-
-            <div data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#58585F; padding-top:16px;">
-              <strong style="color:#0A0A0A;">[Blog Post Title]</strong><br>
-              [One-line teaser of the post.]
-            </div>
-            <div><button class="add-img-btn" type="button" onclick="insertImageSlot(this)">+ Add image</button></div>
-            <div class="cta-holder" style="padding-top:4px;"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" data-pristine="1" style="font-family:'DM Sans', Arial, Helvetica, sans-serif; color:#01A571; font-weight:700; text-decoration:none;">Read More &rarr;</a><button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr></table>
-    </td>
-  </tr>
-  <!-- =================== END REUSABLE SECTION PATTERN =================== -->
 
   <!-- FOOTER — upper band (light, address + social) -->
   <tr>
@@ -417,6 +283,19 @@
 <!-- ============================================================= -->
 <!-- EXPORTABLE REGION ENDS HERE                                   -->
 <!-- ============================================================= -->
+
+<div class="add-bar">
+  <p id="emptyHint" class="empty-hint">Your newsletter is empty — add a block to start.</p>
+  <div class="add-bar-btns">
+    <button type="button" class="add-btn" onclick="addBlock('text')">+ Text</button>
+    <button type="button" class="add-btn" onclick="addBlock('image')">+ Image</button>
+    <button type="button" class="add-btn" onclick="addBlock('twocol')">+ Image &amp; Text</button>
+    <button type="button" class="add-btn" onclick="addBlock('cta')">+ Button</button>
+    <button type="button" class="add-btn" onclick="addBlock('divider')">+ Divider</button>
+    <button type="button" class="add-btn" onclick="addBlock('spacer')">+ Spacer</button>
+  </div>
+  <p class="add-bar-tip">Drag <span class="tipdot">⠿</span> to reorder &middot; <span class="tipdot">✕</span> removes a block &middot; drag an image's bottom-right corner to resize</p>
+</div>
 </div>
 
 <div style="text-align:center; padding:0 10px 30px; font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:11px; color:#9A9A9A;">
@@ -539,7 +418,9 @@
     document.getElementById('container').replaceWith(restored);
     // brand new DOM nodes: force-clear any stale observed flags and reattach ResizeObserver
     restored.querySelectorAll('.imgwrap.resizable').forEach(w=>{ delete w.dataset.observed; });
+    restored.querySelectorAll('tr.nl-block').forEach(r=>{ delete r.dataset.blockInit; });
     initAllResizables();
+    initAllBlocks();
     updateUndoButton();
   }
 
@@ -656,6 +537,168 @@
     observeResizable(wrap);
   }
 
+  // ---------- content blocks ----------
+  // Every block is a <tr>. Vertical order = row order; horizontal pairing is a
+  // nested 2-cell table. Both survive email clients untouched, which is why the
+  // canvas is modelled this way instead of free x/y positioning (Gmail strips
+  // position:absolute outright, so a dragged-anywhere layout cannot survive).
+  const TEXT_STYLE = "font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#000000;";
+  const CTA_STYLE  = "font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; color:#01A571; font-weight:700; text-decoration:none;";
+
+  const BLK_TOOLS = '<div class="blk-tools" contenteditable="false"><span class="blk-drag" title="Drag to reorder">&#10303;</span><button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button></div>';
+
+  function imgSlot(w, h, extraStyle, withClear){
+    return '<span class="imgwrap resizable" style="width:' + w + 'px; height:' + h + 'px; max-width:100%; max-height:900px; min-width:80px;' + (extraStyle || '') + '">' +
+      '<img data-role="img" src="https://placehold.co/' + w + 'x' + h + '/E8E8E8/AAAAAA?text=Click+to+upload" alt="" style="border:0;">' +
+      '<span class="imgwrap-overlay"><span>Click to upload photo</span></span>' +
+      '<input type="file" accept="image/*" onchange="handleImageUpload(event)">' +
+      (withClear ? '<button type="button" class="img-delete-btn" onclick="removeImageCell(this)" title="Remove image">&#10005;</button>' : '') +
+      '</span>';
+  }
+
+  function blockHTML(type){
+    if(type === 'text'){
+      return '<tr class="nl-block" data-block="text"><td style="padding:12px 24px;">' + BLK_TOOLS +
+        '<div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div>' +
+        '</td></tr>';
+    }
+    if(type === 'image'){
+      // standalone images run full-bleed to the 600px edge
+      return '<tr class="nl-block" data-block="image"><td align="center" style="padding:12px 0;">' +
+        '<div class="blk-tools" contenteditable="false">' +
+          '<button type="button" class="blk-al" onclick="setAlign(this,\'left\')" title="Align left">&#9664;</button>' +
+          '<button type="button" class="blk-al" onclick="setAlign(this,\'center\')" title="Centre">&#9679;</button>' +
+          '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>' +
+          '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
+          '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
+        '</div>' + imgSlot(600, 280, '', false) + '</td></tr>';
+    }
+    if(type === 'twocol'){
+      return '<tr class="nl-block" data-block="twocol"><td style="padding:12px 24px;">' + BLK_TOOLS +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody><tr>' +
+        '<td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;">' + imgSlot(200, 160, '', true) + '</td>' +
+        '<td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div></td>' +
+        '</tr></tbody></table></td></tr>';
+    }
+    if(type === 'cta'){
+      return '<tr class="nl-block" data-block="cta"><td style="padding:6px 24px;">' + BLK_TOOLS +
+        '<div class="cta-holder"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" style="' + CTA_STYLE + '">Read More &rarr;</a>' +
+        '<button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr>';
+    }
+    if(type === 'divider'){
+      return '<tr class="nl-block" data-block="divider"><td style="padding:12px 24px;">' + BLK_TOOLS +
+        '<div data-divider style="height:1px; font-size:0; line-height:1px; background-color:#E4E4E4;">&nbsp;</div></td></tr>';
+    }
+    // spacer
+    return '<tr class="nl-block" data-block="spacer"><td style="padding:0;">' +
+      '<div class="blk-tools" contenteditable="false">' +
+        '<select class="blk-h" onchange="setSpacer(this)"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="48">48</option><option value="64">64</option></select>' +
+        '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
+        '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
+      '</div>' +
+      '<div data-spacer style="height:24px; font-size:0; line-height:24px;">&nbsp;</div></td></tr>';
+  }
+
+  function blocksBody(){ return document.getElementById('blocksBody'); }
+
+  function addBlock(type){
+    saveUndoState();
+    const body = blocksBody();
+    if(!body) return;
+    body.insertAdjacentHTML('beforeend', blockHTML(type));
+    const row = body.lastElementChild;
+    initBlock(row);
+    updateEmptyHint();
+    row.scrollIntoView({block:'nearest', behavior:'smooth'});
+  }
+
+  // the ✕ on a block removes the whole thing — placeholder and all
+  function removeBlock(btn){
+    saveUndoState();
+    const row = btn.closest('tr.nl-block');
+    if(row) row.remove();
+    updateEmptyHint();
+  }
+
+  // the ✕ on the image inside an Image & Text pair drops just that column, so
+  // the text reflows to the full width
+  function removeImageCell(btn){
+    saveUndoState();
+    const cell = btn.closest('td');
+    if(cell) cell.remove();
+  }
+
+  function setAlign(btn, how){
+    saveUndoState();
+    const cell = btn.closest('td');
+    if(cell) cell.setAttribute('align', how);
+  }
+
+  function setSpacer(sel){
+    const cell = sel.closest('td');
+    const sp = cell && cell.querySelector('[data-spacer]');
+    if(sp){ sp.style.height = sel.value + 'px'; sp.style.lineHeight = sel.value + 'px'; }
+  }
+
+  function updateEmptyHint(){
+    const hint = document.getElementById('emptyHint');
+    const body = blocksBody();
+    if(hint && body) hint.classList.toggle('hidden', body.children.length > 0);
+  }
+
+  // ---------- drag to reorder ----------
+  let dragRow = null;
+
+  function initBlock(row){
+    if(!row || row.dataset.blockInit) return;
+    row.dataset.blockInit = '1';
+    // a reloaded file has no editor chrome — put it back
+    if(!row.querySelector('.blk-tools')){
+      const cell = row.querySelector('td');
+      if(cell) cell.insertAdjacentHTML('afterbegin', BLK_TOOLS);
+    }
+    const handle = row.querySelector('.blk-drag');
+    if(handle){
+      handle.addEventListener('mousedown', ()=>{ row.setAttribute('draggable','true'); });
+      handle.addEventListener('mouseup',   ()=>{ row.removeAttribute('draggable'); });
+    }
+    row.addEventListener('dragstart', e=>{
+      dragRow = row;
+      saveUndoState();
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', ''); } catch(_){}
+    });
+    row.addEventListener('dragend', ()=>{
+      row.classList.remove('dragging');
+      row.removeAttribute('draggable');
+      dragRow = null;
+    });
+    row.querySelectorAll('.imgwrap.resizable').forEach(observeResizable);
+  }
+
+  function initAllBlocks(){
+    const body = blocksBody();
+    if(!body) return;
+    if(!body.dataset.sortInit){
+      body.dataset.sortInit = '1';
+      body.addEventListener('dragover', e=>{
+        if(!dragRow) return;
+        e.preventDefault();
+        const rows = Array.from(body.children).filter(r => r !== dragRow);
+        let after = null;
+        for(const r of rows){
+          const box = r.getBoundingClientRect();
+          if(e.clientY > box.top + box.height/2) after = r;
+        }
+        if(after) after.after(dragRow); else body.prepend(dragRow);
+      });
+      body.addEventListener('drop', e=> e.preventDefault());
+    }
+    body.querySelectorAll('tr.nl-block').forEach(initBlock);
+    updateEmptyHint();
+  }
+
   // ---------- export ----------
   function removeCollapsing(el){
     const parent = el.parentElement;
@@ -682,52 +725,36 @@
       wrap.dataset.measuredH = (live && live.dataset.h) ? live.dataset.h : (wrap.offsetHeight || 180);
     });
 
-    // Drop any image slot that was never actually filled in (still showing the
-    // "click to upload" placeholder) so the export never contains a broken or
-    // generic placeholder box. Collapse the empty wrapper cleanly so no gap
-    // or misalignment is left behind for the text around it.
+    // editor chrome (drag handles, delete buttons, spacer selector) never ships
+    clone.querySelectorAll('.blk-tools').forEach(el => el.remove());
+
+    // an image slot the user never filled is meaningless in the export
     clone.querySelectorAll('.imgwrap').forEach(wrap=>{
       const img = wrap.querySelector('img');
       if(!img) return;
       const isLogo = img.getAttribute('data-role') === 'logo';
-      const isUnfilled = img.src.indexOf('placehold.co') !== -1;
-      if(!isLogo && isUnfilled){
-        removeCollapsing(wrap);
-      }
+      if(!isLogo && img.src.indexOf('placehold.co') !== -1) removeCollapsing(wrap);
     });
 
-    // Placeholder cleanup driven by two signals: whether the user actually
-    // edited the field (data-pristine present = never touched) and whether it
-    // still contains "[...]" placeholder tokens.
-    //   - untouched AND contains a placeholder  -> drop it (it's a default hint
-    //     the user never filled in, e.g. "[Month YYYY]" or the CEO note).
-    //   - untouched AND no placeholder           -> keep it (a real default
-    //     label like "Issue No: 01" or the footer address).
-    //   - edited                                 -> keep it, and strip any
-    //     leftover "[...]" tokens so partially-filled blocks (e.g. a typed date
-    //     next to an untouched "[Event 1]") show only the real content.
+    // a text block the user never typed into is still showing its prompt copy —
+    // drop it. Scoped to canvas blocks so real footer defaults are left alone.
+    clone.querySelectorAll('tr.nl-block [data-editable][data-pristine]').forEach(el=>{
+      if(!el.closest('.cta-link')) removeCollapsing(el);
+    });
+
+    // strip leftover "[...]" tokens from anything that WAS edited
     clone.querySelectorAll('[data-editable]').forEach(el=>{
-      if(el.closest('.cta-link')) return; // CTAs handled separately by URL
-      const isPristine = el.hasAttribute('data-pristine');
-      const hasBracket = /\[[^\]]*\]/.test(el.textContent);
-      if(isPristine){
-        if(hasBracket) removeCollapsing(el);
-        return;
-      }
-      // edited: strip leftover bracket tokens in place, preserving structure
-      if(hasBracket){
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-        const textNodes = [];
-        let n; while(n = walker.nextNode()) textNodes.push(n);
-        textNodes.forEach(tn=>{ tn.nodeValue = tn.nodeValue.replace(/\[[^\]]*\]/g, ''); });
-        while(el.firstChild && el.firstChild.nodeName === 'BR') el.removeChild(el.firstChild);
-        while(el.lastChild && el.lastChild.nodeName === 'BR') el.removeChild(el.lastChild);
-      }
+      if(el.closest('.cta-link')) return;
+      if(!/\[[^\]]*\]/.test(el.textContent)) return;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      let n; while(n = walker.nextNode()) textNodes.push(n);
+      textNodes.forEach(tn=>{ tn.nodeValue = tn.nodeValue.replace(/\[[^\]]*\]/g, ''); });
+      while(el.firstChild && el.firstChild.nodeName === 'BR') el.removeChild(el.firstChild);
+      while(el.lastChild && el.lastChild.nodeName === 'BR') el.removeChild(el.lastChild);
     });
 
-    // Remove any "Read More"/"Read Article" CTA the user never attached a real
-    // URL to (href still "#"). It won't appear in the export at all, and its
-    // holder div collapses so no empty gap is left behind.
+    // a CTA the user never attached a real URL to
     clone.querySelectorAll('.cta-link').forEach(a=>{
       const href = a.getAttribute('href');
       if(!href || href === '#'){
@@ -737,27 +764,11 @@
       }
     });
 
-    // Whole-section removal: if a section's body (image + text) ends up with
-    // nothing real left in it, remove the entire section — heading, gradient
-    // underline, and the Read More button included — so no empty heading or
-    // dangling button is ever exported, and spacing collapses cleanly.
-    clone.querySelectorAll('.nl-section-row').forEach(tr=>{
-      const body = tr.querySelector('.nl-section-body');
-      if(!body) return;
-      const hasImage = !!body.querySelector('img');
-      const hasText = !!Array.from(body.querySelectorAll('[data-editable]'))
-        .find(el => !el.closest('.cta-link') && el.textContent.trim() !== '');
-      const hasLinkedCta = !!body.querySelector('.cta-link');
-      if(!hasImage && !hasText && !hasLinkedCta){
-        tr.remove();
-      }
-    });
-
-    // bake the measured resize dimensions into width/height + inline style for email reliability
+    // bake the measured resize dimensions into width/height + inline style so the
+    // image occupies exactly the same box in every client
     clone.querySelectorAll('.imgwrap.resizable').forEach(wrap=>{
       let w = parseInt(wrap.dataset.measuredW || wrap.offsetWidth || 300);
       let h = parseInt(wrap.dataset.measuredH || wrap.offsetHeight || 180);
-      // clamp to the usable section content width (full 600 template — no side padding)
       const MAX_CONTENT_W = 600;
       if(w > MAX_CONTENT_W){ h = Math.round(h * (MAX_CONTENT_W / w)); w = MAX_CONTENT_W; }
       const img = wrap.querySelector('img');
@@ -769,27 +780,28 @@
         img.style.maxWidth = '100%';
         img.style.objectFit = 'cover';
         img.style.borderRadius = '4px';
+        img.style.display = 'block';
       }
-      // size the wrapper span so the image reserves the right footprint
       wrap.style.width = w + 'px';
       wrap.style.height = h + 'px';
       wrap.style.maxWidth = '100%';
-      // pin the image column (td.nl-img-cell) to the measured image width so the
-      // two-column table locks the image and text side by side in Gmail
+      // pin the image column so the two-column pair can't shuffle
       const imgCell = wrap.closest('.nl-img-cell');
       if(imgCell){ imgCell.setAttribute('width', w); imgCell.style.width = w + 'px'; }
     });
 
     clone.querySelectorAll('[data-editable]').forEach(el => { el.removeAttribute('contenteditable'); el.removeAttribute('data-pristine'); });
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     clone.querySelectorAll('.imgwrap-overlay').forEach(el => el.remove());
     clone.querySelectorAll('.img-delete-btn').forEach(el => el.remove());
     clone.querySelectorAll('input[type=file]').forEach(el => el.remove());
     clone.querySelectorAll('.add-img-btn').forEach(el => el.closest('div').remove());
 
-    // strip the link-setting buttons and unwrap the cta-wrap span, keeping just the <a> with whatever href was set
+    // strip the link-setting buttons and unwrap the cta-wrap span
     clone.querySelectorAll('.link-btn').forEach(el => el.remove());
     clone.querySelectorAll('.cta-wrap').forEach(wrap=>{
       const a = wrap.querySelector('a');
+      if(!a) { wrap.remove(); return; }
       a.classList.remove('cta-link');
       if(!a.getAttribute('class')) a.removeAttribute('class');
       wrap.replaceWith(a);
@@ -798,9 +810,21 @@
     // unwrap remaining .imgwrap spans (logo + real uploaded photos) -> keep only the <img>
     clone.querySelectorAll('.imgwrap').forEach(wrap => {
       const img = wrap.querySelector('img');
+      if(!img){ wrap.remove(); return; }
       img.style.borderRadius = img.style.borderRadius || '4px';
       wrap.replaceWith(img);
     });
+
+    // any block that ended up with nothing real in it disappears, so no empty
+    // gap or stray padding is ever exported
+    clone.querySelectorAll('tr.nl-block').forEach(tr=>{
+      const keeps = tr.querySelector('img, a, [data-divider], [data-spacer]');
+      if(!keeps && !tr.textContent.replace(/\u00a0/g,'').trim()) tr.remove();
+    });
+
+    // drop editor-only hooks so the export leans on nothing but inline styles
+    clone.querySelectorAll('[draggable]').forEach(el => el.removeAttribute('draggable'));
+    clone.querySelectorAll('[data-block-init]').forEach(el => el.removeAttribute('data-block-init'));
 
     // remove HTML comments (section markers) so the exported file is clean
     const walker = document.createTreeWalker(clone, NodeFilter.SHOW_COMMENT, null);
@@ -1047,6 +1071,8 @@ ${node.outerHTML}
     });
 
     initAllResizables();
+    container.querySelectorAll('tr.nl-block').forEach(r=>{ delete r.dataset.blockInit; });
+    initAllBlocks();
 
     // a loaded file carries its month on the banner img — put it back in the
     // toolbar field and re-composite so it stays editable after loading
@@ -1068,6 +1094,7 @@ ${node.outerHTML}
   window.addEventListener('load', function(){
     initBanner();
     initAllResizables();
+    initAllBlocks();
     updateUndoButton();
     // once the user actually types in a field, it's no longer a pristine default
     document.getElementById('container').addEventListener('input', function(e){
