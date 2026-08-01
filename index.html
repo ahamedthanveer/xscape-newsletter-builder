@@ -77,7 +77,8 @@
   .blk-tools .blk-drag{ cursor:grab; }
   .blk-tools .blk-del:hover{ background:#D33; border-color:#D33; color:#fff; }
   .blk-tools .blk-swap:hover, .blk-tools .blk-al:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
-  .blk-tools .blk-h{
+  .blk-tools .blk-bg{ max-width:82px; }
+  .blk-tools .blk-h, .blk-tools .blk-bg{
     font-family:'DM Sans', Arial, sans-serif; font-size:10px; height:20px;
     border:1px solid #C9C9C9; border-radius:5px; background:#fff; color:#444; cursor:pointer;
   }
@@ -313,7 +314,7 @@
     <button type="button" class="add-btn" onclick="addBlock('divider')">+ Divider</button>
     <button type="button" class="add-btn" onclick="addBlock('spacer')">+ Spacer</button>
   </div>
-  <p class="add-bar-tip">Drag <span class="tipdot">⠿</span> to reorder &middot; <span class="tipdot">✕</span> removes a block &middot; drag an image's bottom-right corner to resize &middot; <span class="tipdot">⇆</span> flips the image to the other side</p>
+  <p class="add-bar-tip">Drag <span class="tipdot">⠿</span> to reorder &middot; <span class="tipdot">✕</span> removes a block &middot; drag an image's bottom-right corner to resize &middot; <span class="tipdot">⇆</span> flips the image to the other side &middot; set a background colour per block to separate posts</p>
 </div>
 </div>
 
@@ -584,7 +585,106 @@
   const TEXT_STYLE = "font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#000000;";
   const CTA_STYLE  = "font-family:'DM Sans', Arial, Helvetica, sans-serif; font-size:16px; color:#01A571; font-weight:700; text-decoration:none;";
 
-  const BLK_TOOLS = '<div class="blk-tools" contenteditable="false"><span class="blk-drag" title="Drag to reorder">&#10303;</span><button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button></div>';
+  // Background colours a block can take. Kept to a light, on-brand set so body
+  // copy stays readable; black is included for a strong divider between posts and
+  // flips the text to white automatically (see applyBlockTextContrast).
+  const BLOCK_BGS = [
+    { name: 'No fill',    value: ''        },
+    { name: 'White',      value: '#FFFFFF' },
+    { name: 'Off-white',  value: '#F7F7F7' },
+    { name: 'Light grey', value: '#F0F0F0' },
+    { name: 'Grey',       value: '#E6E6E6' },
+    { name: 'Cool grey',  value: '#E9EDF2' },
+    { name: 'Mint',       value: '#E9FBF4' },
+    { name: 'Black',      value: '#0A0A0A' }
+  ];
+
+  const ALIGN_BTNS = '<button type="button" class="blk-al" onclick="setAlign(this,\'left\')" title="Align left">&#9664;</button>' +
+                     '<button type="button" class="blk-al" onclick="setAlign(this,\'center\')" title="Centre">&#9679;</button>' +
+                     '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>';
+  const SWAP_BTN   = '<button type="button" class="blk-swap" onclick="swapSides(this)" title="Put the image on the other side">&#8646;</button>';
+  const SPACER_SEL = '<select class="blk-h" onchange="setSpacer(this)" title="Height"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="48">48</option><option value="64">64</option></select>';
+
+  function bgSelectHTML(){
+    return '<select class="blk-bg" onchange="setBlockBg(this)" title="Background colour">' +
+      BLOCK_BGS.map(c => '<option value="' + c.value + '">' + c.name + '</option>').join('') +
+      '</select>';
+  }
+
+  function blkTools(extra){
+    return '<div class="blk-tools" contenteditable="false">' + (extra || '') + bgSelectHTML() +
+      '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
+      '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
+      '</div>';
+  }
+
+  function toolsExtraFor(type){
+    if(type === 'image')  return ALIGN_BTNS;
+    if(type === 'twocol') return SWAP_BTN;
+    if(type === 'spacer') return SPACER_SEL;
+    return '';
+  }
+
+  function toHex(c){
+    if(!c) return '';
+    c = String(c).trim();
+    if(c.charAt(0) === '#') return c.toUpperCase();
+    const m = c.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+    if(!m) return '';
+    return '#' + [1,2,3].map(i => (+m[i]).toString(16).padStart(2,'0')).join('').toUpperCase();
+  }
+
+  function isDarkColour(hex){
+    const h = toHex(hex).replace('#','');
+    if(h.length !== 6) return false;
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    return (0.2126*r + 0.7152*g + 0.0722*b) < 140;   // relative luminance
+  }
+
+  // Body copy is #000000 by design, which disappears on a dark fill — so flip it
+  // to white when the block is dark and back when it isn't. The colour is written
+  // inline, so it survives into the email exactly as shown here.
+  function applyBlockTextContrast(cell, colour){
+    const dark = isDarkColour(colour);
+    cell.querySelectorAll('[data-editable]').forEach(el=>{
+      if(el.classList.contains('cta-link')) return;   // CTA keeps its brand green
+      el.style.color = dark ? '#FFFFFF' : '#000000';
+    });
+  }
+
+  // Background goes on the block's own <td> as both a bgcolor attribute and an
+  // inline style: bgcolor is the one method every email client honours, and the
+  // inline style covers the ones that prefer CSS. Neither affects layout, so the
+  // alignment guarantees are untouched.
+  function setBlockBg(sel){
+    saveUndoState();
+    const cell = sel.closest('td');
+    if(!cell) return;
+    const colour = sel.value;
+    if(colour){
+      cell.setAttribute('bgcolor', colour);
+      cell.style.backgroundColor = colour;
+    } else {
+      cell.removeAttribute('bgcolor');
+      cell.style.backgroundColor = '';
+    }
+    applyBlockTextContrast(cell, colour);
+  }
+
+  // put the controls back in step with the block they belong to (used after a
+  // saved file is loaded, or after an undo rebuilds the DOM)
+  function syncBlockControls(row){
+    const cell = row.querySelector('td');
+    if(!cell) return;
+    const bgSel = row.querySelector('.blk-bg');
+    if(bgSel){
+      const cur = toHex(cell.getAttribute('bgcolor') || cell.style.backgroundColor || '');
+      bgSel.value = BLOCK_BGS.some(c => c.value && c.value.toUpperCase() === cur) ? cur : '';
+    }
+    const hSel = row.querySelector('.blk-h');
+    const sp = cell.querySelector('[data-spacer]');
+    if(hSel && sp) hSel.value = String(parseInt(sp.style.height) || 24);
+  }
 
   function imgSlot(w, h, extraStyle, withClear){
     // The empty state is a CSS box, not a placeholder image. Dragging the corner
@@ -601,20 +701,14 @@
 
   function blockHTML(type){
     if(type === 'text'){
-      return '<tr class="nl-block" data-block="text"><td style="padding:12px 24px;">' + BLK_TOOLS +
+      return '<tr class="nl-block" data-block="text"><td style="padding:12px 24px;">' + blkTools('') +
         '<div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div>' +
         '</td></tr>';
     }
     if(type === 'image'){
       // standalone images run full-bleed to the 600px edge
       return '<tr class="nl-block" data-block="image"><td align="center" style="padding:12px 0;">' +
-        '<div class="blk-tools" contenteditable="false">' +
-          '<button type="button" class="blk-al" onclick="setAlign(this,\'left\')" title="Align left">&#9664;</button>' +
-          '<button type="button" class="blk-al" onclick="setAlign(this,\'center\')" title="Centre">&#9679;</button>' +
-          '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>' +
-          '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
-          '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
-        '</div>' + imgSlot(600, 300, '', false) + '</td></tr>';
+        blkTools(ALIGN_BTNS) + imgSlot(600, 300, '', false) + '</td></tr>';
     }
     if(type === 'twocol'){
       // table-layout:fixed + an explicit width on each cell is what makes the
@@ -622,32 +716,24 @@
       // the user dragged it to, and the text takes the rest. Nothing is left to
       // the client's own column-width guessing, so phone and laptop agree.
       return '<tr class="nl-block" data-block="twocol"><td style="padding:12px 24px;">' +
-        '<div class="blk-tools" contenteditable="false">' +
-          '<button type="button" class="blk-swap" onclick="swapSides(this)" title="Put the image on the other side">&#8646;</button>' +
-          '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
-          '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
-        '</div>' +
+        blkTools(SWAP_BTN) +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; table-layout:fixed;"><tbody><tr>' +
         '<td class="nl-img-cell" valign="top" width="220" style="width:220px; padding:0 20px 0 0;">' + imgSlot(200, 160, ' max-width:400px;', true) + '</td>' +
         '<td class="nl-text-cell" valign="top" width="332" style="width:332px; overflow-wrap:anywhere; word-break:break-word;"><div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div></td>' +
         '</tr></tbody></table></td></tr>';
     }
     if(type === 'cta'){
-      return '<tr class="nl-block" data-block="cta"><td style="padding:6px 24px;">' + BLK_TOOLS +
+      return '<tr class="nl-block" data-block="cta"><td style="padding:6px 24px;">' + blkTools('') +
         '<div class="cta-holder"><span class="cta-wrap"><a href="#" class="cta-link" data-editable contenteditable="true" style="' + CTA_STYLE + '">Read More &rarr;</a>' +
         '<button type="button" class="link-btn" onclick="setLinkURL(this)" title="Add link URL">&#128279;</button></span></div></td></tr>';
     }
     if(type === 'divider'){
-      return '<tr class="nl-block" data-block="divider"><td style="padding:12px 24px;">' + BLK_TOOLS +
+      return '<tr class="nl-block" data-block="divider"><td style="padding:12px 24px;">' + blkTools('') +
         '<div data-divider style="height:1px; font-size:0; line-height:1px; background-color:#E4E4E4;">&nbsp;</div></td></tr>';
     }
     // spacer
     return '<tr class="nl-block" data-block="spacer"><td style="padding:0;">' +
-      '<div class="blk-tools" contenteditable="false">' +
-        '<select class="blk-h" onchange="setSpacer(this)"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="48">48</option><option value="64">64</option></select>' +
-        '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
-        '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
-      '</div>' +
+      blkTools(SPACER_SEL) +
       '<div data-spacer style="height:24px; font-size:0; line-height:24px;">&nbsp;</div></td></tr>';
   }
 
@@ -705,10 +791,11 @@
     if(!row || row.dataset.blockInit) return;
     row.dataset.blockInit = '1';
     // a reloaded file has no editor chrome — put it back
-    if(!row.querySelector('.blk-tools')){
-      const cell = row.querySelector('td');
-      if(cell) cell.insertAdjacentHTML('afterbegin', BLK_TOOLS);
+    const toolCell = row.querySelector('td');
+    if(!row.querySelector('.blk-tools') && toolCell){
+      toolCell.insertAdjacentHTML('afterbegin', blkTools(toolsExtraFor(row.dataset.block)));
     }
+    syncBlockControls(row);
     const handle = row.querySelector('.blk-drag');
     if(handle){
       handle.addEventListener('mousedown', ()=>{ row.setAttribute('draggable','true'); });
