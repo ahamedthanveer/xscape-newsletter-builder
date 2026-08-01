@@ -76,6 +76,7 @@
   }
   .blk-tools .blk-drag{ cursor:grab; }
   .blk-tools .blk-del:hover{ background:#D33; border-color:#D33; color:#fff; }
+  .blk-tools .blk-swap:hover, .blk-tools .blk-al:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
   .blk-tools .blk-h{
     font-family:'DM Sans', Arial, sans-serif; font-size:10px; height:20px;
     border:1px solid #C9C9C9; border-radius:5px; background:#fff; color:#444; cursor:pointer;
@@ -294,7 +295,7 @@
     <button type="button" class="add-btn" onclick="addBlock('divider')">+ Divider</button>
     <button type="button" class="add-btn" onclick="addBlock('spacer')">+ Spacer</button>
   </div>
-  <p class="add-bar-tip">Drag <span class="tipdot">⠿</span> to reorder &middot; <span class="tipdot">✕</span> removes a block &middot; drag an image's bottom-right corner to resize</p>
+  <p class="add-bar-tip">Drag <span class="tipdot">⠿</span> to reorder &middot; <span class="tipdot">✕</span> removes a block &middot; drag an image's bottom-right corner to resize &middot; <span class="tipdot">⇆</span> flips the image to the other side</p>
 </div>
 </div>
 
@@ -485,13 +486,70 @@
   }
 
   // ---------- resizable image tracking ----------
+  // width of a two-column block's inner table: 600px template - 24px block padding either side
+  const PAIR_INNER_W = 552;
+  const PAIR_GUTTER  = 20;
+  const PAIR_MIN_TEXT = 120;
+
+  // Pin the image column to whatever the user dragged the image to, and give the
+  // rest to the text. Runs live while resizing so the editor shows exactly what
+  // the export will produce.
+  function syncPairWidths(wrap){
+    const imgCell = wrap.closest('.nl-img-cell');
+    if(!imgCell) return;
+    const row = imgCell.parentElement;
+    const textCell = row && row.querySelector('.nl-text-cell');
+    let cellW = Math.round(wrap.getBoundingClientRect().width) + PAIR_GUTTER;
+    cellW = Math.max(60, Math.min(cellW, PAIR_INNER_W - PAIR_MIN_TEXT));
+    if(imgCell.getAttribute('width') !== String(cellW)){
+      imgCell.setAttribute('width', cellW);
+      imgCell.style.width = cellW + 'px';
+    }
+    if(textCell){
+      const tw = PAIR_INNER_W - cellW;
+      if(textCell.getAttribute('width') !== String(tw)){
+        textCell.setAttribute('width', tw);
+        textCell.style.width = tw + 'px';
+      }
+    }
+  }
+
   const sizeObserver = new ResizeObserver(entries=>{
     for(const entry of entries){
       const wrap = entry.target;
       wrap.dataset.w = Math.round(entry.contentRect.width);
       wrap.dataset.h = Math.round(entry.contentRect.height);
+      syncPairWidths(wrap);
     }
   });
+
+  // Flip which side the image sits on. Only the cell order and the gutter side
+  // change — the pinned widths carry over, so the layout stays locked.
+  function swapSides(btn){
+    saveUndoState();
+    const block = btn.closest('tr.nl-block');
+    const imgCell = block && block.querySelector('.nl-img-cell');
+    const textCell = block && block.querySelector('.nl-text-cell');
+    if(!imgCell || !textCell) return;
+    const imageIsFirst = !!(imgCell.compareDocumentPosition(textCell) & Node.DOCUMENT_POSITION_FOLLOWING);
+    if(imageIsFirst){
+      textCell.after(imgCell);
+      imgCell.style.padding = '0 0 0 ' + PAIR_GUTTER + 'px';
+    } else {
+      textCell.before(imgCell);
+      imgCell.style.padding = '0 ' + PAIR_GUTTER + 'px 0 0';
+    }
+  }
+
+  function syncAllPairs(){
+    document.querySelectorAll('#container .nl-img-cell .imgwrap.resizable').forEach(syncPairWidths);
+  }
+
+  // ResizeObserver drives the live feedback while dragging, but it can be
+  // throttled; settling the columns on mouse-up guarantees the editor ends up
+  // showing exactly the widths the export will bake in.
+  document.addEventListener('mouseup', syncAllPairs);
+  document.addEventListener('pointerup', syncAllPairs);
 
   function observeResizable(wrap){
     if(wrap.dataset.observed) return;
@@ -571,13 +629,22 @@
           '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>' +
           '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
           '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
-        '</div>' + imgSlot(600, 280, '', false) + '</td></tr>';
+        '</div>' + imgSlot(300, 200, '', false) + '</td></tr>';
     }
     if(type === 'twocol'){
-      return '<tr class="nl-block" data-block="twocol"><td style="padding:12px 24px;">' + BLK_TOOLS +
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody><tr>' +
-        '<td class="nl-img-cell" valign="top" style="padding:0 20px 0 0;">' + imgSlot(200, 160, '', true) + '</td>' +
-        '<td class="nl-text-cell" valign="top"><div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div></td>' +
+      // table-layout:fixed + an explicit width on each cell is what makes the
+      // pair hold its shape: the image column is exactly as wide as the image
+      // the user dragged it to, and the text takes the rest. Nothing is left to
+      // the client's own column-width guessing, so phone and laptop agree.
+      return '<tr class="nl-block" data-block="twocol"><td style="padding:12px 24px;">' +
+        '<div class="blk-tools" contenteditable="false">' +
+          '<button type="button" class="blk-swap" onclick="swapSides(this)" title="Put the image on the other side">&#8646;</button>' +
+          '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
+          '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
+        '</div>' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; table-layout:fixed;"><tbody><tr>' +
+        '<td class="nl-img-cell" valign="top" width="220" style="width:220px; padding:0 20px 0 0;">' + imgSlot(200, 160, ' max-width:400px;', true) + '</td>' +
+        '<td class="nl-text-cell" valign="top" width="332" style="width:332px; overflow-wrap:anywhere; word-break:break-word;"><div data-editable contenteditable="true" data-pristine="1" style="' + TEXT_STYLE + '">Write your text here&hellip;</div></td>' +
         '</tr></tbody></table></td></tr>';
     }
     if(type === 'cta'){
@@ -721,8 +788,13 @@
     const cloneResizables = clone.querySelectorAll('.imgwrap.resizable');
     cloneResizables.forEach((wrap, i)=>{
       const live = liveResizables[i];
-      wrap.dataset.measuredW = (live && live.dataset.w) ? live.dataset.w : (wrap.offsetWidth || 300);
-      wrap.dataset.measuredH = (live && live.dataset.h) ? live.dataset.h : (wrap.offsetHeight || 180);
+      // measure what is actually on screen right now; fall back to the observed
+      // value only if the element can't be measured
+      const box = live ? live.getBoundingClientRect() : null;
+      const liveW = box && box.width ? Math.round(box.width) : 0;
+      const liveH = box && box.height ? Math.round(box.height) : 0;
+      wrap.dataset.measuredW = liveW || (live && live.dataset.w) || wrap.offsetWidth || 300;
+      wrap.dataset.measuredH = liveH || (live && live.dataset.h) || wrap.offsetHeight || 180;
     });
 
     // editor chrome (drag handles, delete buttons, spacer selector) never ships
@@ -785,9 +857,21 @@
       wrap.style.width = w + 'px';
       wrap.style.height = h + 'px';
       wrap.style.maxWidth = '100%';
-      // pin the image column so the two-column pair can't shuffle
+      // Pin BOTH columns of a pair from the measured image size. Explicit widths
+      // on every cell mean no email client has to compute a column layout, which
+      // is what stops the image and text drifting apart on a phone.
       const imgCell = wrap.closest('.nl-img-cell');
-      if(imgCell){ imgCell.setAttribute('width', w); imgCell.style.width = w + 'px'; }
+      if(imgCell){
+        let cellW = Math.max(60, Math.min(w + PAIR_GUTTER, PAIR_INNER_W - PAIR_MIN_TEXT));
+        imgCell.setAttribute('width', cellW);
+        imgCell.style.width = cellW + 'px';
+        const textCell = imgCell.parentElement && imgCell.parentElement.querySelector('.nl-text-cell');
+        if(textCell){
+          const tw = PAIR_INNER_W - cellW;
+          textCell.setAttribute('width', tw);
+          textCell.style.width = tw + 'px';
+        }
+      }
     });
 
     clone.querySelectorAll('[data-editable]').forEach(el => { el.removeAttribute('contenteditable'); el.removeAttribute('data-pristine'); });
@@ -813,6 +897,15 @@
       if(!img){ wrap.remove(); return; }
       img.style.borderRadius = img.style.borderRadius || '4px';
       wrap.replaceWith(img);
+    });
+
+    // if a pair lost its image column, let the text reclaim the full width
+    clone.querySelectorAll('.nl-text-cell').forEach(cell=>{
+      const row = cell.parentElement;
+      if(row && row.children.length === 1){
+        cell.setAttribute('width', PAIR_INNER_W);
+        cell.style.width = '100%';
+      }
     });
 
     // any block that ended up with nothing real in it disappears, so no empty
