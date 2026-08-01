@@ -150,10 +150,28 @@
   .nl-img-cell .imgwrap.resizable{ max-width:100%; box-sizing:border-box; }
   .imgwrap.resizable img{ width:100%; height:100%; object-fit:cover; border-radius:4px; }
   .imgwrap.resizable::after{
-    content:"⤡"; position:absolute; right:2px; bottom:0px; font-size:11px;
+    content:"⤡"; position:absolute; right:1px; bottom:1px; font-size:13px;
     color:#2F7DE1; pointer-events:none; z-index:3; background:#fff; line-height:1;
-    padding:1px 2px; border-radius:2px;
+    padding:2px 3px; border-radius:3px; box-shadow:0 0 0 1px #D7E2F5;
   }
+
+  /* empty placeholder: a box that scales, drawn in CSS so nothing is fetched
+     and nothing gets cropped when it is resized */
+  .imgwrap.is-empty img{ display:none; }
+  .img-ph{ display:none; }
+  .imgwrap.is-empty .img-ph{
+    /* purely decorative: never let it swallow a click on the upload input or a
+       grab on the resize corner */
+    pointer-events:none;
+    position:absolute; inset:0; z-index:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    border:1.5px dashed #B9C2D6; border-radius:4px; background:#F3F5F9;
+    font-family:'DM Sans', Arial, sans-serif; text-align:center; padding:8px;
+    overflow:hidden;
+  }
+  .img-ph-label{ font-size:12px; font-weight:700; color:#7C8AA5; }
+  .img-ph-hint{ font-size:10px; color:#A9B4C7; }
+  .imgwrap.is-empty .imgwrap-overlay{ display:none; }
 
   .add-img-btn{
     display:inline-flex; align-items:center; gap:5px;
@@ -443,32 +461,19 @@
     button.classList.add('linked');
   }
 
-  // ---------- delete/remove an image ----------
-  // First click: if a real photo is uploaded, clear it back to the empty placeholder.
-  // Second click (already empty): if this is an ADDED slot, remove it completely.
-  // Built-in structural slots only ever clear — they never disappear, so the
-  // section layout stays intact.
+  // ---------- clear a photo back to the empty placeholder box ----------
+  // Keeps the box (and whatever size it was dragged to) so the layout doesn't
+  // jump; the block's own ✕ is what removes the placeholder entirely.
+  const IMG_PH_HTML = '<span class="img-ph"><span class="img-ph-label">Click to upload photo</span><span class="img-ph-hint">drag the corner to resize</span></span>';
+
   function deleteImage(button){
     saveUndoState();
     const wrap = button.closest('.imgwrap');
-    const img = wrap.querySelector('img');
-    const isEmpty = img.src.indexOf('placehold.co') !== -1;
-    const isAdded = wrap.classList.contains('added-slot');
-
-    if(!isEmpty){
-      // has a real photo -> revert to placeholder
-      const w = wrap.dataset.w || wrap.offsetWidth || 260;
-      const h = wrap.dataset.h || wrap.offsetHeight || 150;
-      img.src = `https://placehold.co/${Math.round(w)}x${Math.round(h)}/E8E8E8/AAAAAA?text=Click+to+upload`;
-      return;
-    }
-    // already empty
-    if(isAdded){
-      // remove the whole added slot (and its wrapper div if now empty)
-      const holder = wrap.closest('.added-slot-holder') || wrap;
-      holder.remove();
-    }
-    // built-in empty slot: leave as-is (already placeholder); nothing more to do
+    const img = wrap && wrap.querySelector('img');
+    if(!img) return;
+    img.removeAttribute('src');
+    wrap.classList.add('is-empty');
+    if(!wrap.querySelector('.img-ph')) wrap.insertAdjacentHTML('afterbegin', IMG_PH_HTML);
   }
 
   // ---------- image upload ----------
@@ -481,6 +486,7 @@
       const wrap = evt.target.closest('.imgwrap');
       const img = wrap.querySelector('img');
       img.src = e.target.result;
+      wrap.classList.remove('is-empty');   // swap the empty box for the photo
     };
     reader.readAsDataURL(file);
   }
@@ -569,31 +575,6 @@
     if(wrap) saveUndoState();
   });
 
-  // ---------- add image anywhere ----------
-  function insertImageSlot(button){
-    saveUndoState();
-    const wrap = document.createElement('span');
-    wrap.className = 'imgwrap resizable added-slot';
-    wrap.style.display = 'block';
-    wrap.style.width = '100%';
-    wrap.style.maxWidth = '340px';
-    wrap.style.height = '160px';
-    wrap.style.maxHeight = '400px';
-    wrap.style.margin = '10px 0 0';
-    wrap.innerHTML = `
-      <img data-role="img" src="https://placehold.co/340x160/E8E8E8/AAAAAA?text=Click+to+upload" alt="[Image description]" style="border:0;">
-      <span class="imgwrap-overlay"><span>Click to upload photo</span></span>
-      <input type="file" accept="image/*" onchange="handleImageUpload(event)">
-      <button type="button" class="img-delete-btn" onclick="deleteImage(this)" title="Remove image">&#10005;</button>
-    `;
-    const wrapperDiv = document.createElement('div');
-    wrapperDiv.className = 'added-slot-holder';
-    wrapperDiv.appendChild(wrap);
-    // insert right after the "+ Add image" button's own div, so it sits inside
-    // the same section column and aligns with that column's content
-    button.closest('div').insertAdjacentElement('afterend', wrapperDiv);
-    observeResizable(wrap);
-  }
 
   // ---------- content blocks ----------
   // Every block is a <tr>. Vertical order = row order; horizontal pairing is a
@@ -606,9 +587,13 @@
   const BLK_TOOLS = '<div class="blk-tools" contenteditable="false"><span class="blk-drag" title="Drag to reorder">&#10303;</span><button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button></div>';
 
   function imgSlot(w, h, extraStyle, withClear){
-    return '<span class="imgwrap resizable" style="width:' + w + 'px; height:' + h + 'px; max-width:100%; max-height:900px; min-width:80px;' + (extraStyle || '') + '">' +
-      '<img data-role="img" src="https://placehold.co/' + w + 'x' + h + '/E8E8E8/AAAAAA?text=Click+to+upload" alt="" style="border:0;">' +
-      '<span class="imgwrap-overlay"><span>Click to upload photo</span></span>' +
+    // The empty state is a CSS box, not a placeholder image. Dragging the corner
+    // resizes the box itself and the label stays centred and legible at any size
+    // — a placeholder <img> would just get cropped or stretched by object-fit.
+    return '<span class="imgwrap resizable is-empty" style="width:' + w + 'px; height:' + h + 'px; max-width:100%; max-height:900px; min-width:80px;' + (extraStyle || '') + '">' +
+      '<img data-role="img" alt="" style="border:0;">' +
+      '<span class="img-ph"><span class="img-ph-label">Click to upload photo</span><span class="img-ph-hint">drag the corner to resize</span></span>' +
+      '<span class="imgwrap-overlay"><span>Click to replace photo</span></span>' +
       '<input type="file" accept="image/*" onchange="handleImageUpload(event)">' +
       (withClear ? '<button type="button" class="img-delete-btn" onclick="removeImageCell(this)" title="Remove image">&#10005;</button>' : '') +
       '</span>';
@@ -629,7 +614,7 @@
           '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>' +
           '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
           '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
-        '</div>' + imgSlot(300, 200, '', false) + '</td></tr>';
+        '</div>' + imgSlot(600, 300, '', false) + '</td></tr>';
     }
     if(type === 'twocol'){
       // table-layout:fixed + an explicit width on each cell is what makes the
@@ -805,7 +790,11 @@
       const img = wrap.querySelector('img');
       if(!img) return;
       const isLogo = img.getAttribute('data-role') === 'logo';
-      if(!isLogo && img.src.indexOf('placehold.co') !== -1) removeCollapsing(wrap);
+      const src = img.getAttribute('src') || '';
+      // no src = still an empty placeholder box; placehold.co covers files saved
+      // by earlier versions of the tool
+      const isUnfilled = !src || src.indexOf('placehold.co') !== -1;
+      if(!isLogo && isUnfilled) removeCollapsing(wrap);
     });
 
     // a text block the user never typed into is still showing its prompt copy —
@@ -877,6 +866,7 @@
     clone.querySelectorAll('[data-editable]').forEach(el => { el.removeAttribute('contenteditable'); el.removeAttribute('data-pristine'); });
     clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     clone.querySelectorAll('.imgwrap-overlay').forEach(el => el.remove());
+    clone.querySelectorAll('.img-ph').forEach(el => el.remove());
     clone.querySelectorAll('.img-delete-btn').forEach(el => el.remove());
     clone.querySelectorAll('input[type=file]').forEach(el => el.remove());
     clone.querySelectorAll('.add-img-btn').forEach(el => el.closest('div').remove());
@@ -1127,19 +1117,22 @@ ${node.outerHTML}
       wrap.appendChild(img);
       const overlay = document.createElement('span');
       overlay.className = 'imgwrap-overlay';
-      overlay.innerHTML = `<span>${isLogo ? 'Replace logo' : 'Click to upload photo'}</span>`;
+      overlay.innerHTML = `<span>${isLogo ? 'Replace logo' : 'Click to replace photo'}</span>`;
       wrap.appendChild(overlay);
+      if(!isLogo && !img.getAttribute('src')) wrap.classList.add('is-empty');
       const input = document.createElement('input');
       input.type = 'file'; input.accept = 'image/*';
       input.setAttribute('onchange', 'handleImageUpload(event)');
       wrap.appendChild(input);
-      if(!isLogo){
+      // only the image inside a two-column pair carries its own ✕ (it drops that
+      // column); a standalone image is removed by its block's ✕ instead
+      if(!isLogo && wrap.closest('.nl-img-cell')){
         const del = document.createElement('button');
         del.type = 'button';
         del.className = 'img-delete-btn';
         del.title = 'Remove image';
         del.innerHTML = '&#10005;';
-        del.setAttribute('onclick', 'deleteImage(this)');
+        del.setAttribute('onclick', 'removeImageCell(this)');
         wrap.appendChild(del);
       }
     });
