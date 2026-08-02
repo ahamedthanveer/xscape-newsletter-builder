@@ -1118,6 +1118,7 @@
     const modal = document.getElementById('pvModal');
     modal.classList.add('on');
     modal.setAttribute('aria-hidden','false');
+    setPreviewWidth(previewMode);   // normalise the frame to the active mode
     const node = await buildExportPreview();
     const frame = document.getElementById('pvFrame');
     const doc = frame.contentDocument;
@@ -1160,6 +1161,16 @@
     const blocks = node.querySelectorAll('tr.nl-block').length;
     if(!blocks) add('bad', 'The newsletter has no content blocks — there is nothing to send.');
     else add('ok', blocks + ' content block' + (blocks === 1 ? '' : 's') + ' will be sent.');
+
+    // The export deliberately drops anything the user never filled in. That is
+    // the right behaviour, but silently losing a block they added is not — so
+    // say which ones went and why.
+    const live = document.querySelectorAll('#blocksBody tr.nl-block').length;
+    if(live > blocks){
+      const gone = live - blocks;
+      add('warn', gone + ' block' + (gone === 1 ? ' was' : 's were') + ' left out for being empty: an image never uploaded, ' +
+        'placeholder text never edited, or a button with no URL set. ' + blocks + ' of your ' + live + ' blocks will actually send.');
+    }
 
     const imgs = Array.from(node.querySelectorAll('img'));
     const noAlt = imgs.filter(i => !(i.getAttribute('alt') || '').trim());
