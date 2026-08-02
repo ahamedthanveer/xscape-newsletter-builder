@@ -78,17 +78,42 @@
   .blk-tools .blk-del:hover{ background:#D33; border-color:#D33; color:#fff; }
   .blk-tools .blk-swap:hover, .blk-tools .blk-al:hover, .blk-tools .blk-html:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
   .blk-tools .blk-html{ font-size:10px; }
-  .blk-tools .blk-dup:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
+  .blk-tools .blk-dup:hover, .blk-tools .blk-space:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
   .raw-html{ min-height:20px; }
   .btn-url{ margin-left:8px; vertical-align:middle; }
   .social-link{ display:inline-block; }
   .blk-tools .blk-bg{ max-width:82px; }
+  .blk-tools input.blk-h{ width:46px; padding:0 4px; }
   .blk-tools .blk-h, .blk-tools .blk-bg{
     font-family:'DM Sans', Arial, sans-serif; font-size:10px; height:20px;
     border:1px solid #C9C9C9; border-radius:5px; background:#fff; color:#444; cursor:pointer;
   }
   .nl-block.dragging{ opacity:.4; }
   .nl-block.drop-target > td{ outline:2px solid #2F7DE1; outline-offset:-2px; }
+
+  /* ---- spacing popover ---- */
+  .sp-pop{
+    position:absolute; z-index:75; display:none; width:212px;
+    background:#fff; border:1px solid #DDD; border-radius:10px; padding:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); font-family:'DM Sans', Arial, sans-serif;
+  }
+  .sp-pop.on{ display:block; }
+  .sp-title{ font-size:12px; font-weight:700; margin-bottom:9px; }
+  .sp-which{ font-weight:400; color:#999; }
+  .sp-pad{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .sp-pad label{ font-size:10px; color:#777; display:flex; flex-direction:column; gap:3px; }
+  .sp-pad input, .sp-row input{
+    font-family:'DM Sans', Arial, sans-serif; font-size:12px; width:100%;
+    padding:5px 6px; border:1px solid #D5D5D5; border-radius:5px;
+  }
+  .sp-check{ display:flex; align-items:center; gap:6px; font-size:11px; color:#666; margin:9px 0 4px; }
+  .sp-check input{ margin:0; }
+  .sp-row{ display:flex; align-items:center; gap:6px; margin-top:7px; font-size:11px; color:#666; }
+  .sp-row span{ flex:1; }
+  .sp-row input{ width:58px; flex:none; }
+  .sp-row em{ font-style:normal; color:#AAA; font-size:10px; width:14px; }
+  .sp-row.hide{ display:none; }
+  .sp-actions{ display:flex; justify-content:space-between; gap:6px; margin-top:11px; }
 
   /* ---- modal + restore bar ---- */
   .modal{
@@ -318,6 +343,7 @@
       Load Saved File
       <input type="file" accept=".html,.htm" style="display:none;" onchange="loadSavedFile(event)">
     </label>
+    <button class="btn btn-secondary" onclick="openGlobalSpacing()">Spacing</button>
     <button class="btn btn-secondary" onclick="openPreview()">Preview &amp; Check</button>
     <button class="btn btn-secondary" onclick="openTemplates()">Templates</button>
     <button class="btn btn-secondary" id="undoBtn" onclick="undoLast()" disabled>Undo</button>
@@ -398,6 +424,41 @@
 <!-- ============================================================= -->
 <!-- EXPORTABLE REGION ENDS HERE                                   -->
 <!-- ============================================================= -->
+
+<!-- Per-block spacing. Anchored to whichever block is being edited. -->
+<div id="spPop" class="sp-pop" aria-hidden="true">
+  <div class="sp-title">Spacing <span id="spWhich" class="sp-which"></span></div>
+  <div class="sp-pad">
+    <label>Top<input type="number" id="spT" min="0" max="160" step="1"></label>
+    <label>Right<input type="number" id="spR" min="0" max="160" step="1"></label>
+    <label>Bottom<input type="number" id="spB" min="0" max="160" step="1"></label>
+    <label>Left<input type="number" id="spL" min="0" max="160" step="1"></label>
+  </div>
+  <label class="sp-check"><input type="checkbox" id="spLink"> Link all sides</label>
+  <div class="sp-row" id="spLineRow"><span>Line height</span><input type="number" id="spLine" min="8" max="90" step="1"><em>px</em></div>
+  <div class="sp-row" id="spLetterRow"><span>Letter spacing</span><input type="number" id="spLetter" min="-3" max="12" step="0.1"><em>px</em></div>
+  <div class="sp-row" id="spParaRow"><span>Paragraph gap</span><input type="number" id="spPara" min="0" max="80" step="1"><em>px</em></div>
+  <div class="sp-row" id="spGapRow"><span>Column gap</span><input type="number" id="spGap" min="0" max="90" step="1"><em>px</em></div>
+  <div class="sp-actions">
+    <button type="button" class="tpl-mini" onclick="resetSpacing()">Reset</button>
+    <button type="button" class="tpl-mini" onclick="closeSpacing()">Done</button>
+  </div>
+</div>
+
+<!-- Global spacing defaults -->
+<div id="gsModal" class="modal" aria-hidden="true">
+  <div class="modal-box">
+    <h2 class="modal-title">Global spacing</h2>
+    <p class="modal-sub">Sets the padding used by new blocks, and can push it onto every block already on the canvas.</p>
+    <div class="sp-row"><span>Vertical padding</span><input type="number" id="gsV" min="0" max="120" step="1"><em>px</em></div>
+    <div class="sp-row"><span>Side padding</span><input type="number" id="gsH" min="0" max="120" step="1"><em>px</em></div>
+    <p class="modal-note">Side padding is skipped for full-bleed blocks (a standalone image, image + caption, and spacers) so they keep running edge to edge.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="applyGlobalSpacingToAll()">Apply to all blocks</button>
+      <button type="button" class="btn btn-primary" onclick="saveGlobalSpacing()">Save as default</button>
+    </div>
+  </div>
+</div>
 
 <!-- Preview of the actual export, plus pre-send checks -->
 <div id="pvModal" class="modal" aria-hidden="true">
@@ -689,14 +750,16 @@
     if(!imgCell) return;
     const row = imgCell.parentElement;
     const textCell = row && row.querySelector('.nl-text-cell');
-    let cellW = Math.round(wrap.getBoundingClientRect().width) + PAIR_GUTTER;
-    cellW = Math.max(60, Math.min(cellW, PAIR_INNER_W - PAIR_MIN_TEXT));
+    const block = imgCell.closest('tr.nl-block');
+    const inner = block ? innerWidthOf(block) : PAIR_INNER_W;
+    let cellW = Math.round(wrap.getBoundingClientRect().width) + cellGutter(imgCell);
+    cellW = Math.max(60, Math.min(cellW, inner - PAIR_MIN_TEXT));
     if(imgCell.getAttribute('width') !== String(cellW)){
       imgCell.setAttribute('width', cellW);
       imgCell.style.width = cellW + 'px';
     }
     if(textCell){
-      const tw = PAIR_INNER_W - cellW;
+      const tw = inner - cellW;
       if(textCell.getAttribute('width') !== String(tw)){
         textCell.setAttribute('width', tw);
         textCell.style.width = tw + 'px';
@@ -801,7 +864,7 @@
                      '<button type="button" class="blk-al" onclick="setAlign(this,\'center\')" title="Centre">&#9679;</button>' +
                      '<button type="button" class="blk-al" onclick="setAlign(this,\'right\')" title="Align right">&#9654;</button>';
   const SWAP_BTN   = '<button type="button" class="blk-swap" onclick="swapSides(this)" title="Put the image on the other side">&#8646;</button>';
-  const SPACER_SEL = '<select class="blk-h" onchange="setSpacer(this)" title="Height"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="48">48</option><option value="64">64</option></select>';
+  const SPACER_SEL = '<input type="number" class="blk-h" value="24" min="0" max="400" step="1" oninput="setSpacer(this)" title="Spacer height in px">';
 
   function bgSelectHTML(){
     return '<select class="blk-bg" onchange="setBlockBg(this)" title="Background colour">' +
@@ -811,6 +874,7 @@
 
   function blkTools(extra){
     return '<div class="blk-tools" contenteditable="false">' + (extra || '') + bgSelectHTML() +
+      '<button type="button" class="blk-space" onclick="openSpacing(this)" title="Spacing">&#8703;</button>' +
       '<button type="button" class="blk-dup" onclick="duplicateBlock(this)" title="Duplicate this block">&#10697;</button>' +
       '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
       '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
@@ -1006,6 +1070,7 @@
     if(!body) return;
     body.insertAdjacentHTML('beforeend', blockHTML(type));
     const row = body.lastElementChild;
+    applyDefaultSpacing(row);
     initBlock(row);
     updateEmptyHint();
     row.scrollIntoView({block:'nearest', behavior:'smooth'});
@@ -1099,6 +1164,282 @@
     }
     body.querySelectorAll('tr.nl-block').forEach(initBlock);
     updateEmptyHint();
+  }
+
+  // ---------- spacing ----------
+  // Every spacing control writes an inline style on a table cell or a text node.
+  // Nothing here uses margins between blocks (Outlook drops them) or CSS gap
+  // (no email client supports it) — padding on cells is the one thing that works
+  // everywhere, which is why the whole model is built on it.
+  const FULL_BLEED = ['image', 'caption', 'spacer'];   // keep running edge to edge
+  let spTarget = null;
+  let globalSpacing = { v: 12, h: 24 };
+
+  function blockCell(block){ return block ? block.querySelector(':scope > td') : null; }
+
+  function readPad(el){
+    const cs = getComputedStyle(el);
+    return { t: parseInt(cs.paddingTop)||0, r: parseInt(cs.paddingRight)||0,
+             b: parseInt(cs.paddingBottom)||0, l: parseInt(cs.paddingLeft)||0 };
+  }
+  function writePad(el, p){
+    el.style.padding = p.t + 'px ' + p.r + 'px ' + p.b + 'px ' + p.l + 'px';
+  }
+
+  // Usable width inside a block, given whatever side padding it now carries.
+  // Column pinning has to derive from this rather than assume the original 24px,
+  // otherwise changing a block's padding silently misaligns its columns.
+  function innerWidthOf(block){
+    const td = blockCell(block);
+    if(!td) return 552;
+    const cs = getComputedStyle(td);
+    const w = Math.max(80, 600 - (parseInt(cs.paddingLeft)||0) - (parseInt(cs.paddingRight)||0));
+    block.dataset.innerW = w;
+    return w;
+  }
+
+  function cellGutter(cell){
+    if(!cell) return 0;
+    const cs = getComputedStyle(cell);
+    return (parseInt(cs.paddingLeft)||0) + (parseInt(cs.paddingRight)||0);
+  }
+
+  // three-column widths: share the usable width after the gutters are taken out
+  function syncColWidths(block){
+    const cells = Array.from(block.querySelectorAll('.nl-col'));
+    if(!cells.length) return;
+    const inner = innerWidthOf(block);
+    let gutters = 0;
+    cells.forEach((c, i)=>{ if(i < cells.length - 1) gutters += cellGutter(c); });
+    const each = Math.max(40, Math.floor((inner - gutters) / cells.length));
+    cells.forEach((c, i)=>{
+      const total = each + (i < cells.length - 1 ? cellGutter(c) : 0);
+      c.setAttribute('width', total);
+      c.style.width = total + 'px';
+    });
+  }
+
+  function syncAllCols(){
+    document.querySelectorAll('#blocksBody tr[data-block="threecol"]').forEach(syncColWidths);
+  }
+
+  function setColumnGap(block, gap){
+    const type = block.dataset.block;
+    if(type === 'twocol'){
+      const imgCell = block.querySelector('.nl-img-cell');
+      const textCell = block.querySelector('.nl-text-cell');
+      if(!imgCell) return;
+      const imageIsFirst = textCell && !!(imgCell.compareDocumentPosition(textCell) & Node.DOCUMENT_POSITION_FOLLOWING);
+      imgCell.style.padding = imageIsFirst ? ('0 ' + gap + 'px 0 0') : ('0 0 0 ' + gap + 'px');
+      const wrap = imgCell.querySelector('.imgwrap.resizable');
+      if(wrap) syncPairWidths(wrap);
+    } else if(type === 'threecol'){
+      const cells = Array.from(block.querySelectorAll('.nl-col'));
+      cells.forEach((c, i)=>{ c.style.padding = (i < cells.length - 1) ? ('0 ' + gap + 'px 0 0') : '0'; });
+      syncColWidths(block);
+    }
+  }
+
+  function currentColumnGap(block){
+    if(block.dataset.block === 'twocol') return cellGutter(block.querySelector('.nl-img-cell'));
+    if(block.dataset.block === 'threecol') return cellGutter(block.querySelector('.nl-col'));
+    return 0;
+  }
+
+  function blockTextNodes(block){
+    return Array.from(block.querySelectorAll('[data-editable]')).filter(el => !el.classList.contains('cta-link'));
+  }
+
+  // Paragraph gap is stored on the editable and re-applied to its block-level
+  // children, since contenteditable creates new <div>s as the user types and a
+  // one-off style would only cover the paragraphs that existed at the time.
+  function applyParagraphGap(el){
+    const gap = parseInt(el.dataset.paraGap || '0') || 0;
+    el.querySelectorAll(':scope > div, :scope > p').forEach(child=>{
+      child.style.marginBottom = gap ? gap + 'px' : '';
+    });
+  }
+
+  function openSpacing(btn){
+    const block = btn.closest('tr.nl-block');
+    if(!block) return;
+    spTarget = block;
+    const pop = document.getElementById('spPop');
+    const cell = blockCell(block);
+    const pad = readPad(cell);
+    document.getElementById('spT').value = pad.t;
+    document.getElementById('spR').value = pad.r;
+    document.getElementById('spB').value = pad.b;
+    document.getElementById('spL').value = pad.l;
+    document.getElementById('spLink').checked = (pad.t === pad.b && pad.r === pad.l && pad.t === pad.r);
+    document.getElementById('spWhich').textContent = '· ' + block.dataset.block;
+
+    const texts = blockTextNodes(block);
+    const hasText = texts.length > 0;
+    const isCols = block.dataset.block === 'twocol' || block.dataset.block === 'threecol';
+    document.getElementById('spLineRow').classList.toggle('hide', !hasText);
+    document.getElementById('spLetterRow').classList.toggle('hide', !hasText);
+    document.getElementById('spParaRow').classList.toggle('hide', !hasText);
+    document.getElementById('spGapRow').classList.toggle('hide', !isCols);
+    if(hasText){
+      const cs = getComputedStyle(texts[0]);
+      document.getElementById('spLine').value = Math.round(parseFloat(cs.lineHeight) || 24);
+      document.getElementById('spLetter').value = (parseFloat(cs.letterSpacing) || 0).toFixed(1);
+      document.getElementById('spPara').value = parseInt(texts[0].dataset.paraGap || '0') || 0;
+    }
+    if(isCols) document.getElementById('spGap').value = currentColumnGap(block);
+
+    pop.classList.add('on');
+    pop.setAttribute('aria-hidden','false');
+    const box = block.getBoundingClientRect();
+    const popBox = pop.getBoundingClientRect();
+    let left = box.right + window.scrollX - popBox.width;
+    left = Math.max(8, Math.min(left, window.scrollX + document.documentElement.clientWidth - popBox.width - 8));
+    let top = box.top + window.scrollY + 26;
+    if(top + popBox.height > window.scrollY + window.innerHeight){
+      top = Math.max(window.scrollY + 8, window.scrollY + window.innerHeight - popBox.height - 8);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+
+  function closeSpacing(){
+    const pop = document.getElementById('spPop');
+    pop.classList.remove('on');
+    pop.setAttribute('aria-hidden','true');
+    spTarget = null;
+  }
+
+  function applySpacingFromInputs(changed){
+    if(!spTarget) return;
+    const cell = blockCell(spTarget);
+    if(!cell) return;
+    const linked = document.getElementById('spLink').checked;
+    const num = id => Math.max(0, parseInt(document.getElementById(id).value) || 0);
+    let pad = { t: num('spT'), r: num('spR'), b: num('spB'), l: num('spL') };
+    if(linked && changed){
+      const v = num(changed);
+      pad = { t: v, r: v, b: v, l: v };
+      ['spT','spR','spB','spL'].forEach(id=>{ document.getElementById(id).value = v; });
+    }
+    writePad(cell, pad);
+
+    const texts = blockTextNodes(spTarget);
+    const line = parseInt(document.getElementById('spLine').value);
+    const letter = parseFloat(document.getElementById('spLetter').value);
+    const para = Math.max(0, parseInt(document.getElementById('spPara').value) || 0);
+    texts.forEach(el=>{
+      if(!isNaN(line) && line > 0) el.style.lineHeight = line + 'px';
+      if(!isNaN(letter)) el.style.letterSpacing = letter ? letter + 'px' : '';
+      el.dataset.paraGap = para;
+      applyParagraphGap(el);
+    });
+
+    if(!document.getElementById('spGapRow').classList.contains('hide')){
+      setColumnGap(spTarget, Math.max(0, parseInt(document.getElementById('spGap').value) || 0));
+    }
+    // padding changed the usable width, so re-derive any pinned columns
+    innerWidthOf(spTarget);
+    syncAllPairs();
+    syncAllCols();
+    scheduleAutosave();
+  }
+
+  function resetSpacing(){
+    if(!spTarget) return;
+    saveUndoState();
+    const type = spTarget.dataset.block;
+    const h = FULL_BLEED.indexOf(type) >= 0 ? 0 : globalSpacing.h;
+    writePad(blockCell(spTarget), { t: globalSpacing.v, r: h, b: globalSpacing.v, l: h });
+    blockTextNodes(spTarget).forEach(el=>{
+      el.style.lineHeight = '';
+      el.style.letterSpacing = '';
+      el.dataset.paraGap = 0;
+      applyParagraphGap(el);
+    });
+    if(type === 'twocol' || type === 'threecol') setColumnGap(spTarget, 20);
+    innerWidthOf(spTarget);
+    syncAllPairs(); syncAllCols();
+    openSpacing(spTarget.querySelector('.blk-space'));
+    scheduleAutosave();
+  }
+
+  function initSpacingPopover(){
+    const pop = document.getElementById('spPop');
+    if(!pop || pop.dataset.init) return;
+    pop.dataset.init = '1';
+    ['spT','spR','spB','spL','spLine','spLetter','spPara','spGap'].forEach(id=>{
+      const el = document.getElementById(id);
+      el.addEventListener('input', ()=> applySpacingFromInputs(id));
+    });
+    document.getElementById('spLink').addEventListener('change', ()=> applySpacingFromInputs('spT'));
+    // clicking away closes it, but clicks inside must not
+    document.addEventListener('mousedown', e=>{
+      if(!spTarget) return;
+      if(e.target.closest('#spPop') || e.target.closest('.blk-space')) return;
+      closeSpacing();
+    });
+  }
+
+  // ---------- global spacing defaults ----------
+  function loadGlobalSpacing(){
+    try {
+      const saved = JSON.parse(localStorage.getItem('xscape.nl.spacing') || 'null');
+      if(saved && typeof saved.v === 'number' && typeof saved.h === 'number') globalSpacing = saved;
+    } catch(_){}
+  }
+
+  function openGlobalSpacing(){
+    document.getElementById('gsV').value = globalSpacing.v;
+    document.getElementById('gsH').value = globalSpacing.h;
+    const m = document.getElementById('gsModal');
+    m.classList.add('on');
+    m.setAttribute('aria-hidden','false');
+  }
+
+  function closeGlobalSpacing(){
+    const m = document.getElementById('gsModal');
+    m.classList.remove('on');
+    m.setAttribute('aria-hidden','true');
+  }
+
+  function readGlobalInputs(){
+    globalSpacing = {
+      v: Math.max(0, parseInt(document.getElementById('gsV').value) || 0),
+      h: Math.max(0, parseInt(document.getElementById('gsH').value) || 0)
+    };
+  }
+
+  function saveGlobalSpacing(){
+    readGlobalInputs();
+    lsSet('xscape.nl.spacing', JSON.stringify(globalSpacing));
+    closeGlobalSpacing();
+  }
+
+  function applyGlobalSpacingToAll(){
+    readGlobalInputs();
+    saveUndoState();
+    document.querySelectorAll('#blocksBody tr.nl-block').forEach(block=>{
+      const cell = blockCell(block);
+      if(!cell) return;
+      const h = FULL_BLEED.indexOf(block.dataset.block) >= 0 ? 0 : globalSpacing.h;
+      writePad(cell, { t: globalSpacing.v, r: h, b: globalSpacing.v, l: h });
+      innerWidthOf(block);
+    });
+    syncAllPairs(); syncAllCols();
+    lsSet('xscape.nl.spacing', JSON.stringify(globalSpacing));
+    closeGlobalSpacing();
+    scheduleAutosave();
+  }
+
+  // new blocks pick up the saved default padding
+  function applyDefaultSpacing(block){
+    const cell = blockCell(block);
+    if(!cell) return;
+    if(globalSpacing.v === 12 && globalSpacing.h === 24) return;   // template default already
+    const h = FULL_BLEED.indexOf(block.dataset.block) >= 0 ? 0 : globalSpacing.h;
+    writePad(cell, { t: globalSpacing.v, r: h, b: globalSpacing.v, l: h });
+    innerWidthOf(block);
   }
 
   // ---------- preview + pre-send checks ----------
@@ -1638,12 +1979,15 @@
       // is what stops the image and text drifting apart on a phone.
       const imgCell = wrap.closest('.nl-img-cell');
       if(imgCell){
-        let cellW = Math.max(60, Math.min(w + PAIR_GUTTER, PAIR_INNER_W - PAIR_MIN_TEXT));
+        const blockRow = imgCell.closest('tr.nl-block');
+        const inner = (blockRow && parseInt(blockRow.dataset.innerW)) || PAIR_INNER_W;
+        const gut = (parseInt(imgCell.style.paddingRight) || parseInt(imgCell.style.paddingLeft) || PAIR_GUTTER);
+        let cellW = Math.max(60, Math.min(w + gut, inner - PAIR_MIN_TEXT));
         imgCell.setAttribute('width', cellW);
         imgCell.style.width = cellW + 'px';
         const textCell = imgCell.parentElement && imgCell.parentElement.querySelector('.nl-text-cell');
         if(textCell){
-          const tw = PAIR_INNER_W - cellW;
+          const tw = inner - cellW;
           textCell.setAttribute('width', tw);
           textCell.style.width = tw + 'px';
         }
@@ -1684,7 +2028,8 @@
     clone.querySelectorAll('.nl-text-cell').forEach(cell=>{
       const row = cell.parentElement;
       if(row && row.children.length === 1){
-        cell.setAttribute('width', PAIR_INNER_W);
+        const lrow = cell.closest('tr.nl-block');
+        cell.setAttribute('width', (lrow && parseInt(lrow.dataset.innerW)) || PAIR_INNER_W);
         cell.style.width = '100%';
       }
     });
@@ -1699,6 +2044,14 @@
     // Lists and links carry no styling of their own once the stylesheet is gone,
     // and Outlook in particular gives <ul> a wildly different default indent — so
     // pin the spacing inline and make sure every link is visibly a link.
+    clone.querySelectorAll('[data-para-gap]').forEach(el=>{
+      const gap = parseInt(el.dataset.paraGap || '0') || 0;
+      el.querySelectorAll(':scope > div, :scope > p').forEach(child=>{
+        if(gap) child.style.marginBottom = gap + 'px';
+      });
+      el.removeAttribute('data-para-gap');
+    });
+
     clone.querySelectorAll('ul, ol').forEach(list=>{
       list.style.margin = list.style.margin || '0 0 0 18px';
       list.style.padding = list.style.padding || '0';
@@ -1991,6 +2344,8 @@ ${node.outerHTML}
     initAllResizables();
     container.querySelectorAll('tr.nl-block').forEach(r=>{ delete r.dataset.blockInit; });
     initAllBlocks();
+    container.querySelectorAll('tr.nl-block').forEach(innerWidthOf);
+    syncAllPairs(); syncAllCols();
 
     // a loaded file carries its month on the banner img — put it back in the
     // toolbar field and re-composite so it stays editable after loading
@@ -2014,17 +2369,23 @@ ${node.outerHTML}
     initAllResizables();
     initAllBlocks();
     initRteBar();
+    loadGlobalSpacing();
+    initSpacingPopover();
     offerRestore();
     // click the backdrop or press Escape to dismiss either dialog
-    ['pvModal','tplModal'].forEach(id=>{
+    ['pvModal','tplModal','gsModal'].forEach(id=>{
       const m = document.getElementById(id);
-      m.addEventListener('mousedown', e=>{ if(e.target === m){ closePreview(); closeTemplates(); } });
+      m.addEventListener('mousedown', e=>{ if(e.target === m){ closePreview(); closeTemplates(); closeGlobalSpacing(); } });
     });
     document.addEventListener('keydown', e=>{
-      if(e.key === 'Escape'){ closePreview(); closeTemplates(); }
+      if(e.key === 'Escape'){ closePreview(); closeTemplates(); closeGlobalSpacing(); closeSpacing(); }
     });
     // any edit inside the newsletter schedules an autosave
     document.getElementById('container').addEventListener('input', scheduleAutosave);
+    document.getElementById('container').addEventListener('input', e=>{
+      const host = e.target.closest && e.target.closest('[data-editable][data-para-gap]');
+      if(host) applyParagraphGap(host);
+    });
     document.getElementById('container').addEventListener('change', scheduleAutosave);
     updateUndoButton();
     // once the user actually types in a field, it's no longer a pristine default
