@@ -78,6 +78,7 @@
   .blk-tools .blk-del:hover{ background:#D33; border-color:#D33; color:#fff; }
   .blk-tools .blk-swap:hover, .blk-tools .blk-al:hover, .blk-tools .blk-html:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
   .blk-tools .blk-html{ font-size:10px; }
+  .blk-tools .blk-dup:hover{ background:#EFF5FF; border-color:#2F7DE1; color:#2F7DE1; }
   .raw-html{ min-height:20px; }
   .btn-url{ margin-left:8px; vertical-align:middle; }
   .social-link{ display:inline-block; }
@@ -88,6 +89,48 @@
   }
   .nl-block.dragging{ opacity:.4; }
   .nl-block.drop-target > td{ outline:2px solid #2F7DE1; outline-offset:-2px; }
+
+  /* ---- modal + restore bar ---- */
+  .modal{
+    position:fixed; inset:0; z-index:80; background:rgba(10,10,10,.55);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal.on{ display:flex; }
+  .modal-box{
+    background:#fff; border-radius:12px; padding:22px; width:min(520px, 100%);
+    max-height:80vh; overflow:auto; font-family:'DM Sans', Arial, sans-serif;
+  }
+  .modal-title{ font-size:16px; margin:0 0 4px; }
+  .modal-sub{ font-size:12px; color:#777; margin:0 0 16px; }
+  .modal-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .modal-input{
+    flex:1; font-family:'DM Sans', Arial, sans-serif; font-size:13px;
+    padding:9px 11px; border:1px solid #D5D5D5; border-radius:8px;
+  }
+  .tpl-list{ display:flex; flex-direction:column; gap:6px; }
+  .tpl-row{
+    display:flex; align-items:center; gap:8px; padding:9px 11px;
+    border:1px solid #E6E6E6; border-radius:8px; font-size:13px;
+  }
+  .tpl-row .tpl-name{ flex:1; font-weight:700; }
+  .tpl-row .tpl-when{ color:#999; font-size:11px; }
+  .tpl-mini{
+    font-family:'DM Sans', Arial, sans-serif; font-size:11px; font-weight:700;
+    padding:5px 9px; border-radius:6px; cursor:pointer; border:1px solid #C9C9C9; background:#F7F7F7;
+  }
+  .tpl-mini.danger:hover{ background:#D33; border-color:#D33; color:#fff; }
+  .modal-note{ font-size:11.5px; color:#8A8A8A; margin:12px 0 0; min-height:14px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+  .modal-empty{ font-size:12.5px; color:#999; font-style:italic; padding:6px 2px; }
+
+  .restore-bar{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:70;
+    display:none; align-items:center; gap:10px;
+    background:#0A0A0A; color:#fff; padding:11px 15px; border-radius:10px;
+    font-family:'DM Sans', Arial, sans-serif; font-size:12.5px;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);
+  }
+  .restore-bar.on{ display:flex; }
 
   /* ---- rich text toolbar ---- */
   .rte-bar{
@@ -250,6 +293,7 @@
       Load Saved File
       <input type="file" accept=".html,.htm" style="display:none;" onchange="loadSavedFile(event)">
     </label>
+    <button class="btn btn-secondary" onclick="openTemplates()">Templates</button>
     <button class="btn btn-secondary" id="undoBtn" onclick="undoLast()" disabled>Undo</button>
     <button class="btn btn-secondary" onclick="resetTool()">Reset</button>
     <button class="btn btn-secondary" onclick="exportEmailHTML()">Download for Email</button>
@@ -328,6 +372,29 @@
 <!-- ============================================================= -->
 <!-- EXPORTABLE REGION ENDS HERE                                   -->
 <!-- ============================================================= -->
+
+<!-- Saved templates (browser storage only — nothing leaves this machine) -->
+<div id="tplModal" class="modal" aria-hidden="true">
+  <div class="modal-box">
+    <h2 class="modal-title">Templates</h2>
+    <p class="modal-sub">Saved in this browser only. Use “Download for Email” for a copy you can keep or share.</p>
+    <div class="modal-row">
+      <input type="text" id="tplName" class="modal-input" placeholder="Template name" maxlength="60">
+      <button type="button" class="btn btn-primary" onclick="saveTemplate()">Save current</button>
+    </div>
+    <div id="tplList" class="tpl-list"></div>
+    <p id="tplNote" class="modal-note"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeTemplates()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="restoreBar" class="restore-bar" aria-hidden="true">
+  <span id="restoreMsg">Unsaved work from your last session was found.</span>
+  <button type="button" class="btn btn-primary" onclick="restoreAutosave()">Restore it</button>
+  <button type="button" class="btn btn-secondary" onclick="dismissRestore()">Start fresh</button>
+</div>
 
 <!-- Formatting toolbar. Floats above the block being edited; never exported. -->
 <div id="rteBar" class="rte-bar" aria-hidden="true">
@@ -698,6 +765,7 @@
 
   function blkTools(extra){
     return '<div class="blk-tools" contenteditable="false">' + (extra || '') + bgSelectHTML() +
+      '<button type="button" class="blk-dup" onclick="duplicateBlock(this)" title="Duplicate this block">&#10697;</button>' +
       '<span class="blk-drag" title="Drag to reorder">&#10303;</span>' +
       '<button type="button" class="blk-del" onclick="removeBlock(this)" title="Remove this block">&#10005;</button>' +
       '</div>';
@@ -895,6 +963,7 @@
     initBlock(row);
     updateEmptyHint();
     row.scrollIntoView({block:'nearest', behavior:'smooth'});
+    scheduleAutosave();
   }
 
   // the ✕ on a block removes the whole thing — placeholder and all
@@ -903,6 +972,7 @@
     const row = btn.closest('tr.nl-block');
     if(row) row.remove();
     updateEmptyHint();
+    scheduleAutosave();
   }
 
   // the ✕ on the image inside an Image & Text pair drops just that column, so
@@ -983,6 +1053,182 @@
     }
     body.querySelectorAll('tr.nl-block').forEach(initBlock);
     updateEmptyHint();
+  }
+
+  // ---------- autosave + templates ----------
+  // Everything lives in this browser's localStorage. Photos are base64 data URIs
+  // and localStorage caps out around 5MB, so a design with a few large images can
+  // legitimately fail to save — that is reported rather than swallowed, because
+  // silently not saving is worse than saying so.
+  const LS_AUTOSAVE  = 'xscape.nl.autosave';
+  const LS_TEMPLATES = 'xscape.nl.templates';
+  let autosaveTimer = null;
+  let autosaveBlocked = false;
+
+  function currentDesign(){
+    const c = document.getElementById('container');
+    return c ? c.outerHTML : '';
+  }
+
+  function lsSet(key, value){
+    try { localStorage.setItem(key, value); return true; }
+    catch(err){ return false; }   // quota, private mode, storage disabled
+  }
+
+  function humanSize(n){
+    return n > 1048576 ? (n/1048576).toFixed(1) + 'MB' : Math.round(n/1024) + 'KB';
+  }
+
+  function scheduleAutosave(){
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(()=>{
+      const payload = JSON.stringify({ when: Date.now(), html: currentDesign() });
+      const ok = lsSet(LS_AUTOSAVE, payload);
+      if(!ok && !autosaveBlocked){
+        autosaveBlocked = true;
+        flashAutosaveWarning(payload.length);
+      } else if(ok){
+        autosaveBlocked = false;
+      }
+    }, 1200);
+  }
+
+  function flashAutosaveWarning(size){
+    const bar = document.getElementById('restoreBar');
+    document.getElementById('restoreMsg').textContent =
+      'Too large to autosave (' + humanSize(size) + '). Use “Download for Email” to keep this work.';
+    bar.querySelectorAll('.btn').forEach(b=> b.style.display = 'none');
+    bar.classList.add('on');
+    setTimeout(()=>{
+      bar.classList.remove('on');
+      bar.querySelectorAll('.btn').forEach(b=> b.style.display = '');
+    }, 6000);
+  }
+
+  function offerRestore(){
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LS_AUTOSAVE) || 'null'); } catch(_){}
+    if(!saved || !saved.html) return;
+    // nothing to restore if that snapshot has no blocks in it
+    const probe = document.createElement('div');
+    probe.innerHTML = saved.html;
+    const blocks = probe.querySelectorAll('tr.nl-block').length;
+    if(!blocks) return;
+    const when = new Date(saved.when);
+    document.getElementById('restoreMsg').textContent =
+      'Found ' + blocks + ' block' + (blocks === 1 ? '' : 's') + ' from ' + when.toLocaleString() + '.';
+    document.getElementById('restoreBar').classList.add('on');
+  }
+
+  function restoreAutosave(){
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LS_AUTOSAVE) || 'null'); } catch(_){}
+    if(saved && saved.html) loadDesignHTML(saved.html);
+    dismissRestore();
+  }
+
+  function dismissRestore(){
+    document.getElementById('restoreBar').classList.remove('on');
+  }
+
+  // shared by restore and template loading
+  function loadDesignHTML(html){
+    saveUndoState();
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const incoming = temp.querySelector('#container') || temp.querySelector('table');
+    if(!incoming) return false;
+    incoming.setAttribute('id', 'container');
+    document.getElementById('container').replaceWith(incoming);
+    rehydrateContainer();
+    return true;
+  }
+
+  function readTemplates(){
+    try { return JSON.parse(localStorage.getItem(LS_TEMPLATES) || '[]'); }
+    catch(_){ return []; }
+  }
+
+  function openTemplates(){
+    renderTemplates();
+    document.getElementById('tplModal').classList.add('on');
+    document.getElementById('tplModal').setAttribute('aria-hidden','false');
+  }
+
+  function closeTemplates(){
+    document.getElementById('tplModal').classList.remove('on');
+    document.getElementById('tplModal').setAttribute('aria-hidden','true');
+    document.getElementById('tplNote').textContent = '';
+  }
+
+  function renderTemplates(){
+    const list = document.getElementById('tplList');
+    const items = readTemplates();
+    if(!items.length){
+      list.innerHTML = '<p class="modal-empty">No templates saved yet.</p>';
+      return;
+    }
+    list.innerHTML = items.map((t, i) =>
+      '<div class="tpl-row">' +
+        '<span class="tpl-name"></span>' +
+        '<span class="tpl-when">' + new Date(t.when).toLocaleDateString() + '</span>' +
+        '<button type="button" class="tpl-mini" onclick="loadTemplate(' + i + ')">Load</button>' +
+        '<button type="button" class="tpl-mini danger" onclick="deleteTemplate(' + i + ')">Delete</button>' +
+      '</div>').join('');
+    // set names as text, never as HTML — a template name is user input
+    list.querySelectorAll('.tpl-name').forEach((el, i)=>{ el.textContent = items[i].name; });
+  }
+
+  function saveTemplate(){
+    const input = document.getElementById('tplName');
+    const name = input.value.trim();
+    const note = document.getElementById('tplNote');
+    if(!name){ note.textContent = 'Give the template a name first.'; return; }
+    const items = readTemplates();
+    const existing = items.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
+    if(existing >= 0 && !confirm('A template called “' + name + '” already exists. Replace it?')) return;
+    const entry = { name: name, when: Date.now(), html: currentDesign() };
+    if(existing >= 0) items[existing] = entry; else items.push(entry);
+    const ok = lsSet(LS_TEMPLATES, JSON.stringify(items));
+    if(!ok){
+      note.textContent = 'Could not save — this design is too large for browser storage. Use “Download for Email” instead.';
+      return;
+    }
+    input.value = '';
+    note.textContent = 'Saved “' + name + '”.';
+    renderTemplates();
+  }
+
+  function loadTemplate(i){
+    const items = readTemplates();
+    const t = items[i];
+    if(!t) return;
+    if(!confirm('Load “' + t.name + '”? This replaces what is on the canvas.')) return;
+    loadDesignHTML(t.html);
+    closeTemplates();
+  }
+
+  function deleteTemplate(i){
+    const items = readTemplates();
+    const t = items[i];
+    if(!t || !confirm('Delete “' + t.name + '”?')) return;
+    items.splice(i, 1);
+    lsSet(LS_TEMPLATES, JSON.stringify(items));
+    renderTemplates();
+  }
+
+  // duplicate a block, including whatever was typed and uploaded into it
+  function duplicateBlock(btn){
+    saveUndoState();
+    const row = btn.closest('tr.nl-block');
+    if(!row) return;
+    const copy = row.cloneNode(true);
+    delete copy.dataset.blockInit;
+    copy.querySelectorAll('.imgwrap.resizable').forEach(w=>{ delete w.dataset.observed; });
+    row.after(copy);
+    initBlock(copy);
+    updateEmptyHint();
+    scheduleAutosave();
   }
 
   // ---------- rich text formatting ----------
@@ -1593,6 +1839,10 @@ ${node.outerHTML}
     initAllResizables();
     initAllBlocks();
     initRteBar();
+    offerRestore();
+    // any edit inside the newsletter schedules an autosave
+    document.getElementById('container').addEventListener('input', scheduleAutosave);
+    document.getElementById('container').addEventListener('change', scheduleAutosave);
     updateUndoButton();
     // once the user actually types in a field, it's no longer a pristine default
     document.getElementById('container').addEventListener('input', function(e){
