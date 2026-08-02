@@ -85,6 +85,27 @@
   .nl-block.dragging{ opacity:.4; }
   .nl-block.drop-target > td{ outline:2px solid #2F7DE1; outline-offset:-2px; }
 
+  /* ---- rich text toolbar ---- */
+  .rte-bar{
+    position:absolute; z-index:60; display:none; align-items:center; gap:3px;
+    background:#0A0A0A; padding:5px 7px; border-radius:8px;
+    box-shadow:0 4px 14px rgba(0,0,0,.28);
+  }
+  .rte-bar.on{ display:flex; }
+  .rte-btn{
+    font-family:'DM Sans', Arial, sans-serif; font-size:12px; line-height:1;
+    min-width:24px; height:24px; padding:0 5px; border-radius:5px; cursor:pointer;
+    border:1px solid #333; background:#1D1D1D; color:#fff;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .rte-btn:hover{ background:#2C2C2C; }
+  .rte-btn.active{ background:#5CDB3B; border-color:#5CDB3B; color:#0A0A0A; }
+  .rte-sel{
+    font-family:'DM Sans', Arial, sans-serif; font-size:11px; height:24px;
+    border:1px solid #333; border-radius:5px; background:#1D1D1D; color:#fff; cursor:pointer;
+  }
+  .rte-sep{ width:1px; height:16px; background:#3A3A3A; margin:0 2px; }
+
   /* ---- add bar ---- */
   .add-bar{ width:600px; max-width:100%; padding:14px 0 24px; text-align:center; }
   .empty-hint{
@@ -303,6 +324,45 @@
 <!-- ============================================================= -->
 <!-- EXPORTABLE REGION ENDS HERE                                   -->
 <!-- ============================================================= -->
+
+<!-- Formatting toolbar. Floats above the block being edited; never exported. -->
+<div id="rteBar" class="rte-bar" aria-hidden="true">
+  <button type="button" class="rte-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+  <button type="button" class="rte-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+  <button type="button" class="rte-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+  <span class="rte-sep"></span>
+  <select class="rte-sel" id="rteSize" title="Text size">
+    <option value="">Size</option>
+    <option value="12px">12</option>
+    <option value="14px">14</option>
+    <option value="16px">16</option>
+    <option value="18px">18</option>
+    <option value="20px">20</option>
+    <option value="24px">24</option>
+    <option value="28px">28</option>
+    <option value="34px">34</option>
+  </select>
+  <select class="rte-sel" id="rteColour" title="Text colour">
+    <option value="">Colour</option>
+    <option value="#000000">Black</option>
+    <option value="#58585F">Grey</option>
+    <option value="#FFFFFF">White</option>
+    <option value="#01A571">Brand green</option>
+    <option value="#2F7DE1">Blue</option>
+    <option value="#D33">Red</option>
+  </select>
+  <span class="rte-sep"></span>
+  <button type="button" class="rte-btn" data-cmd="justifyLeft" title="Align left">&#9776;</button>
+  <button type="button" class="rte-btn" data-cmd="justifyCenter" title="Centre">&#8801;</button>
+  <button type="button" class="rte-btn" data-cmd="justifyRight" title="Align right">&#9776;</button>
+  <span class="rte-sep"></span>
+  <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="Bulleted list">&bull;&#8212;</button>
+  <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="Numbered list">1.&#8212;</button>
+  <span class="rte-sep"></span>
+  <button type="button" class="rte-btn" id="rteLink" title="Add or edit link">&#128279;</button>
+  <button type="button" class="rte-btn" id="rteUnlink" title="Remove link">&#9986;</button>
+  <button type="button" class="rte-btn" id="rteClear" title="Clear formatting">&#10007;A</button>
+</div>
 
 <div class="add-bar">
   <p id="emptyHint" class="empty-hint">Your newsletter is empty — add a block to start.</p>
@@ -838,6 +898,132 @@
     updateEmptyHint();
   }
 
+  // ---------- rich text formatting ----------
+  // execCommand is deprecated but it is still the only thing every browser
+  // implements for contenteditable, and with styleWithCSS on it produces inline
+  // styles (<span style="color:...">) rather than <font> tags — which is exactly
+  // what email needs, since the export carries no stylesheet.
+  let rteTarget = null;
+
+  function rteEditableFromSelection(){
+    const sel = window.getSelection();
+    if(!sel || !sel.rangeCount) return null;
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    if(node.nodeType === 3) node = node.parentNode;
+    const host = node.closest ? node.closest('[data-editable][contenteditable="true"]') : null;
+    return (host && host.closest('#container')) ? host : null;
+  }
+
+  function positionRteBar(host){
+    const bar = document.getElementById('rteBar');
+    const box = host.getBoundingClientRect();
+    bar.classList.add('on');
+    bar.setAttribute('aria-hidden','false');
+    const barBox = bar.getBoundingClientRect();
+    let top = box.top + window.scrollY - barBox.height - 8;
+    if(top < window.scrollY + 4) top = box.bottom + window.scrollY + 8;   // flip below if clipped
+    let left = box.left + window.scrollX;
+    const maxLeft = window.scrollX + document.documentElement.clientWidth - barBox.width - 8;
+    if(left > maxLeft) left = Math.max(8, maxLeft);
+    bar.style.top = top + 'px';
+    bar.style.left = left + 'px';
+  }
+
+  function hideRteBar(){
+    const bar = document.getElementById('rteBar');
+    bar.classList.remove('on');
+    bar.setAttribute('aria-hidden','true');
+    rteTarget = null;
+  }
+
+  function refreshRteState(){
+    document.querySelectorAll('#rteBar .rte-btn[data-cmd]').forEach(btn=>{
+      const cmd = btn.dataset.cmd;
+      let on = false;
+      try { on = document.queryCommandState(cmd); } catch(_){}
+      btn.classList.toggle('active', !!on);
+    });
+  }
+
+  function syncRteBar(){
+    const host = rteEditableFromSelection();
+    if(!host){ hideRteBar(); return; }
+    rteTarget = host;
+    positionRteBar(host);
+    refreshRteState();
+  }
+
+  document.addEventListener('selectionchange', ()=>{
+    // ignore selection changes caused by clicking inside the toolbar itself
+    if(document.activeElement && document.activeElement.closest('#rteBar')) return;
+    syncRteBar();
+  });
+  window.addEventListener('scroll', ()=>{ if(rteTarget) positionRteBar(rteTarget); }, {passive:true});
+  window.addEventListener('resize', ()=>{ if(rteTarget) positionRteBar(rteTarget); });
+
+  function rteExec(cmd, value){
+    if(!rteTarget) return;
+    saveUndoState();
+    try { document.execCommand('styleWithCSS', false, true); } catch(_){}
+    rteTarget.focus({preventScroll:true});
+    document.execCommand(cmd, false, value === undefined ? null : value);
+    rteTarget.removeAttribute('data-pristine');
+    refreshRteState();
+  }
+
+  // Applies a font size to the selection. execCommand('fontSize') emits <font
+  // size="N">, which email clients render inconsistently, so the tag is swapped
+  // for a span carrying an inline pixel size.
+  function rteFontSize(px){
+    if(!rteTarget || !px) return;
+    saveUndoState();
+    try { document.execCommand('styleWithCSS', false, true); } catch(_){}
+    rteTarget.focus({preventScroll:true});
+    document.execCommand('fontSize', false, '7');
+    rteTarget.querySelectorAll('font[size="7"]').forEach(f=>{
+      const span = document.createElement('span');
+      span.style.fontSize = px;
+      span.innerHTML = f.innerHTML;
+      f.replaceWith(span);
+    });
+    rteTarget.removeAttribute('data-pristine');
+  }
+
+  function rteSetLink(){
+    if(!rteTarget) return;
+    const sel = window.getSelection();
+    if(!sel || sel.isCollapsed){ alert('Select the text you want to link first.'); return; }
+    const existing = sel.anchorNode && sel.anchorNode.parentElement
+      ? sel.anchorNode.parentElement.closest('a') : null;
+    const url = prompt('Link URL:', existing ? existing.getAttribute('href') : 'https://');
+    if(url === null) return;
+    const trimmed = url.trim();
+    if(!trimmed){ rteExec('unlink'); return; }
+    rteExec('createLink', trimmed);
+    // give the new link an inline style so it looks right without a stylesheet
+    rteTarget.querySelectorAll('a[href]').forEach(a=>{
+      if(!a.style.color){ a.style.color = '#01A571'; a.style.textDecoration = 'underline'; }
+    });
+  }
+
+  function initRteBar(){
+    const bar = document.getElementById('rteBar');
+    if(!bar || bar.dataset.init) return;
+    bar.dataset.init = '1';
+    // mousedown (not click) so the text selection isn't lost before we act
+    bar.addEventListener('mousedown', e=> e.preventDefault());
+    bar.querySelectorAll('.rte-btn[data-cmd]').forEach(btn=>{
+      btn.addEventListener('click', ()=> rteExec(btn.dataset.cmd));
+    });
+    document.getElementById('rteLink').addEventListener('click', rteSetLink);
+    document.getElementById('rteUnlink').addEventListener('click', ()=> rteExec('unlink'));
+    document.getElementById('rteClear').addEventListener('click', ()=> rteExec('removeFormat'));
+    const sizeSel = document.getElementById('rteSize');
+    sizeSel.addEventListener('change', ()=>{ rteFontSize(sizeSel.value); sizeSel.value = ''; });
+    const colSel = document.getElementById('rteColour');
+    colSel.addEventListener('change', ()=>{ if(colSel.value) rteExec('foreColor', colSel.value); colSel.value = ''; });
+  }
+
   // ---------- export ----------
   function removeCollapsing(el){
     const parent = el.parentElement;
@@ -870,7 +1056,7 @@
     });
 
     // editor chrome (drag handles, delete buttons, spacer selector) never ships
-    clone.querySelectorAll('.blk-tools').forEach(el => el.remove());
+    clone.querySelectorAll('.blk-tools, .rte-bar').forEach(el => el.remove());
 
     // an image slot the user never filled is meaningless in the export
     clone.querySelectorAll('.imgwrap').forEach(wrap=>{
@@ -990,6 +1176,21 @@
     clone.querySelectorAll('tr.nl-block').forEach(tr=>{
       const keeps = tr.querySelector('img, a, [data-divider], [data-spacer]');
       if(!keeps && !tr.textContent.replace(/\u00a0/g,'').trim()) tr.remove();
+    });
+
+    // Lists and links carry no styling of their own once the stylesheet is gone,
+    // and Outlook in particular gives <ul> a wildly different default indent — so
+    // pin the spacing inline and make sure every link is visibly a link.
+    clone.querySelectorAll('ul, ol').forEach(list=>{
+      list.style.margin = list.style.margin || '0 0 0 18px';
+      list.style.padding = list.style.padding || '0';
+    });
+    clone.querySelectorAll('li').forEach(li=>{
+      if(!li.style.marginBottom) li.style.marginBottom = '4px';
+    });
+    clone.querySelectorAll('a[href]').forEach(a=>{
+      if(!a.style.color) a.style.color = '#01A571';
+      if(!a.style.textDecoration) a.style.textDecoration = 'underline';
     });
 
     // drop editor-only hooks so the export leans on nothing but inline styles
@@ -1273,6 +1474,7 @@ ${node.outerHTML}
     initBanner();
     initAllResizables();
     initAllBlocks();
+    initRteBar();
     updateUndoButton();
     // once the user actually types in a field, it's no longer a pristine default
     document.getElementById('container').addEventListener('input', function(e){
