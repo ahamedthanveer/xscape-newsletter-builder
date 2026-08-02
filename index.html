@@ -375,7 +375,7 @@
        depend on. That is what keeps it aligned identically on phone and laptop. -->
   <tr>
     <td style="padding:0;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" id="blocks" style="width:100%;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" id="blocks" style="width:100%; table-layout:fixed;">
         <tbody id="blocksBody"></tbody>
       </table>
     </td>
@@ -1260,6 +1260,43 @@
     });
   }
 
+  // The width an image is allowed to occupy in a given block, once that block's
+  // padding and any column gutter are taken out. Images are the only content
+  // that carries an explicit pixel width, so they are the only thing that can
+  // push past the 600px frame when spacing changes around them.
+  function imageCapFor(wrap){
+    const block = wrap.closest('tr.nl-block');
+    if(!block) return 600;
+    const inner = innerWidthOf(block);
+    const imgCell = wrap.closest('.nl-img-cell');
+    if(imgCell) return Math.max(60, inner - cellGutter(imgCell) - PAIR_MIN_TEXT);
+    const col = wrap.closest('.nl-col');
+    if(col) return Math.max(40, (parseInt(col.getAttribute('width')) || 0) - cellGutter(col) || 40);
+    return inner;
+  }
+
+  // Shrink anything that no longer fits, and pin the ceiling so it cannot be
+  // dragged back out. Proportional so the image keeps its shape.
+  function clampBlockImages(block){
+    block.querySelectorAll('.imgwrap.resizable').forEach(wrap=>{
+      const cap = imageCapFor(wrap);
+      wrap.style.maxWidth = cap + 'px';
+      const box = wrap.getBoundingClientRect();
+      const cur = Math.round(box.width);
+      if(cur > cap && cur > 0){
+        const h = Math.max(20, Math.round(box.height * (cap / cur)));
+        wrap.style.width = cap + 'px';
+        wrap.style.height = h + 'px';
+        wrap.dataset.w = cap;
+        wrap.dataset.h = h;
+      }
+    });
+  }
+
+  function clampAllImages(){
+    document.querySelectorAll('#blocksBody tr.nl-block').forEach(clampBlockImages);
+  }
+
   function openSpacing(btn){
     const block = btn.closest('tr.nl-block');
     if(!block) return;
@@ -1271,7 +1308,9 @@
     document.getElementById('spR').value = pad.r;
     document.getElementById('spB').value = pad.b;
     document.getElementById('spL').value = pad.l;
-    document.getElementById('spLink').checked = (pad.t === pad.b && pad.r === pad.l && pad.t === pad.r);
+    // deliberately NOT derived from the current padding: a block whose sides
+    // happen to match (a spacer, say) would silently arrive with linking on, and
+    // then editing one side would move all four.
     document.getElementById('spWhich').textContent = '· ' + block.dataset.block;
 
     const texts = blockTextNodes(block);
@@ -1338,10 +1377,12 @@
     if(!document.getElementById('spGapRow').classList.contains('hide')){
       setColumnGap(spTarget, Math.max(0, parseInt(document.getElementById('spGap').value) || 0));
     }
-    // padding changed the usable width, so re-derive any pinned columns
+    // padding changed the usable width, so re-derive any pinned columns and pull
+    // any now-oversized image back inside the block
     innerWidthOf(spTarget);
-    syncAllPairs();
     syncAllCols();
+    clampBlockImages(spTarget);
+    syncAllPairs();
     scheduleAutosave();
   }
 
@@ -1359,7 +1400,7 @@
     });
     if(type === 'twocol' || type === 'threecol') setColumnGap(spTarget, 20);
     innerWidthOf(spTarget);
-    syncAllPairs(); syncAllCols();
+    syncAllCols(); clampBlockImages(spTarget); syncAllPairs();
     openSpacing(spTarget.querySelector('.blk-space'));
     scheduleAutosave();
   }
@@ -1426,7 +1467,7 @@
       writePad(cell, { t: globalSpacing.v, r: h, b: globalSpacing.v, l: h });
       innerWidthOf(block);
     });
-    syncAllPairs(); syncAllCols();
+    syncAllCols(); clampAllImages(); syncAllPairs();
     lsSet('xscape.nl.spacing', JSON.stringify(globalSpacing));
     closeGlobalSpacing();
     scheduleAutosave();
@@ -1544,6 +1585,11 @@
     const risky = /float\s*:|position\s*:\s*absolute|display\s*:\s*(flex|grid)/i.test(html);
     if(risky) add('bad', 'Layout uses float, absolute positioning, or flex/grid. These break in Outlook and Gmail — most likely from an HTML block.');
     else add('ok', 'Layout is tables and inline styles only, so it holds together on phone and laptop.');
+
+    // nothing may be wider than the newsletter itself
+    const tooWide = Array.from(node.querySelectorAll('img')).filter(i => (parseInt(i.getAttribute('width')) || 0) > 600);
+    if(tooWide.length) add('bad', tooWide.length + ' image' + (tooWide.length === 1 ? ' is' : 's are') +
+      ' wider than the 600px newsletter and will hang outside it.');
 
     const svg = /<svg/i.test(html);
     if(svg) add('warn', 'An inline SVG survived into the export. Gmail strips these.');
@@ -1958,8 +2004,14 @@
     clone.querySelectorAll('.imgwrap.resizable').forEach(wrap=>{
       let w = parseInt(wrap.dataset.measuredW || wrap.offsetWidth || 300);
       let h = parseInt(wrap.dataset.measuredH || wrap.offsetHeight || 180);
+      // Cap to the space this block actually has. A flat 600 would let an image
+      // in a padded block bake a width wider than the cell holding it, which is
+      // exactly how content ends up hanging outside the newsletter.
       const MAX_CONTENT_W = 600;
-      if(w > MAX_CONTENT_W){ h = Math.round(h * (MAX_CONTENT_W / w)); w = MAX_CONTENT_W; }
+      const liveWrap = liveResizables[Array.prototype.indexOf.call(cloneResizables, wrap)];
+      let capW = MAX_CONTENT_W;
+      try { if(liveWrap) capW = Math.min(MAX_CONTENT_W, imageCapFor(liveWrap)); } catch(_){}
+      if(w > capW){ h = Math.round(h * (capW / w)); w = capW; }
       const img = wrap.querySelector('img');
       if(img){
         img.setAttribute('width', w);
@@ -2050,6 +2102,11 @@
         if(gap) child.style.marginBottom = gap + 'px';
       });
       el.removeAttribute('data-para-gap');
+    });
+
+    // an unbroken string (a long URL) would otherwise widen its cell
+    clone.querySelectorAll('[data-editable]').forEach(el=>{
+      if(!el.style.wordBreak) el.style.wordBreak = 'break-word';
     });
 
     clone.querySelectorAll('ul, ol').forEach(list=>{
@@ -2345,7 +2402,7 @@ ${node.outerHTML}
     container.querySelectorAll('tr.nl-block').forEach(r=>{ delete r.dataset.blockInit; });
     initAllBlocks();
     container.querySelectorAll('tr.nl-block').forEach(innerWidthOf);
-    syncAllPairs(); syncAllCols();
+    syncAllCols(); clampAllImages(); syncAllPairs();
 
     // a loaded file carries its month on the banner img — put it back in the
     // toolbar field and re-composite so it stays editable after loading
@@ -2371,6 +2428,7 @@ ${node.outerHTML}
     initRteBar();
     loadGlobalSpacing();
     initSpacingPopover();
+    clampAllImages();
     offerRestore();
     // click the backdrop or press Escape to dismiss either dialog
     ['pvModal','tplModal','gsModal'].forEach(id=>{
