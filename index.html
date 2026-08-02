@@ -977,15 +977,21 @@
   function rteFontSize(px){
     if(!rteTarget || !px) return;
     saveUndoState();
-    try { document.execCommand('styleWithCSS', false, true); } catch(_){}
     rteTarget.focus({preventScroll:true});
+    // Force the legacy <font size="7"> output: with styleWithCSS on, fontSize
+    // emits a keyword size (xxx-large) instead, which is not a pixel value and
+    // renders unpredictably in email. The tag is converted immediately below.
+    try { document.execCommand('styleWithCSS', false, false); } catch(_){}
     document.execCommand('fontSize', false, '7');
+    try { document.execCommand('styleWithCSS', false, true); } catch(_){}
     rteTarget.querySelectorAll('font[size="7"]').forEach(f=>{
       const span = document.createElement('span');
       span.style.fontSize = px;
       span.innerHTML = f.innerHTML;
       f.replaceWith(span);
     });
+    // belt and braces for browsers that apply styleWithCSS regardless
+    rteTarget.querySelectorAll('[style*="xxx-large"]').forEach(el=>{ el.style.fontSize = px; });
     rteTarget.removeAttribute('data-pristine');
   }
 
