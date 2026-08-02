@@ -123,6 +123,31 @@
   .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
   .modal-empty{ font-size:12.5px; color:#999; font-style:italic; padding:6px 2px; }
 
+  .modal-wide{ width:min(760px, 100%); }
+  .pv-tabs{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .pv-tab{
+    font-family:'DM Sans', Arial, sans-serif; font-size:12px; font-weight:700;
+    padding:7px 13px; border-radius:7px; cursor:pointer;
+    border:1px solid #D5D5D5; background:#F7F7F7; color:#444;
+  }
+  .pv-tab.on{ background:#0A0A0A; border-color:#0A0A0A; color:#fff; }
+  .pv-w{ font-size:11px; color:#999; margin-left:2px; flex:1; }
+  .pv-stage{
+    background:#E9E9EC; border-radius:10px; padding:14px; display:flex; justify-content:center;
+    max-height:46vh; overflow:auto;
+  }
+  .pv-frame{ border:0; background:#fff; width:600px; height:900px; transition:width .18s; }
+  .pv-h3{ font-size:13px; margin:16px 0 8px; }
+  .pv-checks{ display:flex; flex-direction:column; gap:5px; }
+  .pv-item{
+    display:flex; gap:8px; align-items:flex-start; font-size:12.5px;
+    padding:8px 10px; border-radius:7px; line-height:1.45;
+  }
+  .pv-item.ok{ background:#EEF9F2; color:#1B6B48; }
+  .pv-item.warn{ background:#FFF6E5; color:#8A5A00; }
+  .pv-item.bad{ background:#FDECEC; color:#A32020; }
+  .pv-item b{ font-weight:700; }
+
   .restore-bar{
     position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:70;
     display:none; align-items:center; gap:10px;
@@ -293,6 +318,7 @@
       Load Saved File
       <input type="file" accept=".html,.htm" style="display:none;" onchange="loadSavedFile(event)">
     </label>
+    <button class="btn btn-secondary" onclick="openPreview()">Preview &amp; Check</button>
     <button class="btn btn-secondary" onclick="openTemplates()">Templates</button>
     <button class="btn btn-secondary" id="undoBtn" onclick="undoLast()" disabled>Undo</button>
     <button class="btn btn-secondary" onclick="resetTool()">Reset</button>
@@ -372,6 +398,26 @@
 <!-- ============================================================= -->
 <!-- EXPORTABLE REGION ENDS HERE                                   -->
 <!-- ============================================================= -->
+
+<!-- Preview of the actual export, plus pre-send checks -->
+<div id="pvModal" class="modal" aria-hidden="true">
+  <div class="modal-box modal-wide">
+    <h2 class="modal-title">Preview &amp; pre-send check</h2>
+    <p class="modal-sub">This renders the real exported HTML — what a recipient gets, not the editor.</p>
+    <div class="pv-tabs">
+      <button type="button" class="pv-tab on" id="pvDesktop" onclick="setPreviewWidth('desktop')">Desktop</button>
+      <button type="button" class="pv-tab" id="pvMobile" onclick="setPreviewWidth('mobile')">Mobile</button>
+      <span class="pv-w" id="pvWidthLabel">600px</span>
+      <button type="button" class="tpl-mini" onclick="downloadPlainText()">Plain-text version</button>
+    </div>
+    <div class="pv-stage"><iframe id="pvFrame" class="pv-frame" title="Newsletter preview"></iframe></div>
+    <h3 class="pv-h3">Checks</h3>
+    <div id="pvChecks" class="pv-checks"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closePreview()">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Saved templates (browser storage only — nothing leaves this machine) -->
 <div id="tplModal" class="modal" aria-hidden="true">
@@ -1053,6 +1099,124 @@
     }
     body.querySelectorAll('tr.nl-block').forEach(initBlock);
     updateEmptyHint();
+  }
+
+  // ---------- preview + pre-send checks ----------
+  // The preview renders the genuine export (same cleanExportNode + rasterise pass
+  // the download uses), not the editor DOM — otherwise it would happily show
+  // things that never survive the export.
+  let previewMode = 'desktop';
+
+  async function buildExportPreview(){
+    prepareContainerFont();
+    const node = cleanExportNode();
+    await rasterizeSvgImages(node);
+    return node;
+  }
+
+  async function openPreview(){
+    const modal = document.getElementById('pvModal');
+    modal.classList.add('on');
+    modal.setAttribute('aria-hidden','false');
+    const node = await buildExportPreview();
+    const frame = document.getElementById('pvFrame');
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '</head><body style="margin:0;padding:0;">' + node.outerHTML + '</body></html>');
+    doc.close();
+    // size the frame to its content so the whole newsletter is scrollable
+    setTimeout(()=>{
+      try {
+        const h = doc.body.scrollHeight;
+        if(h) frame.style.height = Math.min(h + 20, 4000) + 'px';
+      } catch(_){}
+    }, 60);
+    runChecks(node);
+  }
+
+  function closePreview(){
+    const modal = document.getElementById('pvModal');
+    modal.classList.remove('on');
+    modal.setAttribute('aria-hidden','true');
+  }
+
+  function setPreviewWidth(mode){
+    previewMode = mode;
+    const frame = document.getElementById('pvFrame');
+    frame.style.width = (mode === 'mobile') ? '375px' : '600px';
+    document.getElementById('pvWidthLabel').textContent = (mode === 'mobile') ? '375px' : '600px';
+    document.getElementById('pvDesktop').classList.toggle('on', mode === 'desktop');
+    document.getElementById('pvMobile').classList.toggle('on', mode === 'mobile');
+  }
+
+  // Checks run against the exported node, so they describe what recipients
+  // actually get rather than what the editor happens to be showing.
+  function runChecks(node){
+    const items = [];
+    const add = (level, msg) => items.push({level: level, msg: msg});
+
+    const blocks = node.querySelectorAll('tr.nl-block').length;
+    if(!blocks) add('bad', 'The newsletter has no content blocks — there is nothing to send.');
+    else add('ok', blocks + ' content block' + (blocks === 1 ? '' : 's') + ' will be sent.');
+
+    const imgs = Array.from(node.querySelectorAll('img'));
+    const noAlt = imgs.filter(i => !(i.getAttribute('alt') || '').trim());
+    if(noAlt.length) add('warn', noAlt.length + ' of ' + imgs.length + ' image' + (imgs.length === 1 ? '' : 's') +
+      ' have no alt text. Screen readers skip them, and they show as blank when images are blocked — which Outlook does by default.');
+    else if(imgs.length) add('ok', 'All ' + imgs.length + ' images have alt text.');
+
+    const deadLinks = Array.from(node.querySelectorAll('a')).filter(a=>{
+      const h = (a.getAttribute('href') || '').trim();
+      return !h || h === '#';
+    });
+    if(deadLinks.length) add('bad', deadLinks.length + ' link' + (deadLinks.length === 1 ? ' goes' : 's go') + ' nowhere (href is empty or "#").');
+    else add('ok', 'Every link points somewhere.');
+
+    // data-URI images are the main weight; Gmail clips a message over ~102KB
+    let bytes = 0;
+    imgs.forEach(i=>{
+      const src = i.getAttribute('src') || '';
+      if(src.startsWith('data:')) bytes += Math.round(src.length * 0.75);
+    });
+    const totalKB = Math.round(node.outerHTML.length / 1024);
+    const heavy = imgs.filter(i => (i.getAttribute('src') || '').length * 0.75 > 700 * 1024);
+    if(heavy.length) add('warn', heavy.length + ' image' + (heavy.length === 1 ? ' is' : 's are') +
+      ' over 700KB. Resize before uploading — large images slow the message down and some clients refuse to load them.');
+    if(totalKB > 102) add('warn', 'Total size is about ' + totalKB + 'KB. Gmail clips messages over ~102KB, hiding the end behind a “View entire message” link.');
+    else add('ok', 'Total size is about ' + totalKB + 'KB, under Gmail\u2019s ~102KB clipping threshold.');
+
+    // the guarantee this whole tool is built around
+    const html = node.outerHTML;
+    const risky = /float\s*:|position\s*:\s*absolute|display\s*:\s*(flex|grid)/i.test(html);
+    if(risky) add('bad', 'Layout uses float, absolute positioning, or flex/grid. These break in Outlook and Gmail — most likely from an HTML block.');
+    else add('ok', 'Layout is tables and inline styles only, so it holds together on phone and laptop.');
+
+    const svg = /<svg/i.test(html);
+    if(svg) add('warn', 'An inline SVG survived into the export. Gmail strips these.');
+
+    const box = document.getElementById('pvChecks');
+    box.innerHTML = items.map(i =>
+      '<div class="pv-item ' + i.level + '"><b>' + (i.level === 'ok' ? '\u2713' : i.level === 'warn' ? '!' : '\u2715') + '</b><span></span></div>'
+    ).join('');
+    box.querySelectorAll('.pv-item span').forEach((el, i)=>{ el.textContent = items[i].msg; });
+  }
+
+  // A plain-text alternative matters for deliverability and for clients that
+  // refuse HTML; this derives one from the export rather than the editor.
+  async function downloadPlainText(){
+    const node = await buildExportPreview();
+    const lines = [];
+    node.querySelectorAll('tr.nl-block').forEach(tr=>{
+      const text = (tr.textContent || '').replace(/\s+/g, ' ').trim();
+      if(text) lines.push(text);
+      tr.querySelectorAll('a[href]').forEach(a=>{
+        const href = a.getAttribute('href');
+        if(href && href !== '#') lines.push('  -> ' + href);
+      });
+    });
+    downloadFile('xscape-newsletter.txt', lines.join('\n\n'), 'text/plain');
   }
 
   // ---------- autosave + templates ----------
@@ -1840,6 +2004,14 @@ ${node.outerHTML}
     initAllBlocks();
     initRteBar();
     offerRestore();
+    // click the backdrop or press Escape to dismiss either dialog
+    ['pvModal','tplModal'].forEach(id=>{
+      const m = document.getElementById(id);
+      m.addEventListener('mousedown', e=>{ if(e.target === m){ closePreview(); closeTemplates(); } });
+    });
+    document.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){ closePreview(); closeTemplates(); }
+    });
     // any edit inside the newsletter schedules an autosave
     document.getElementById('container').addEventListener('input', scheduleAutosave);
     document.getElementById('container').addEventListener('change', scheduleAutosave);
